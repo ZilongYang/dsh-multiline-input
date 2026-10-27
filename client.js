@@ -90,18 +90,20 @@ window.__ModuleLoader__.load({
 .dml-hint {
   position: absolute;
   top: 0;
-  left: 0;
   right: 0;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   box-sizing: border-box;
+  /* Hug the text: the block and its hairline only span the hint, not the card. */
+  width: max-content;
+  max-width: 100%;
   height: 26px;
   padding: 0 12px;
   background: var(--dsw-specific-input-major);
   border-bottom: 0.5px solid var(--dsw-alias-border-l1);
-  border-radius: var(--dsw-radius-panel) var(--dsw-radius-panel) 0 0;
+  border-radius: 0 var(--dsw-radius-panel) 0 0;
   pointer-events: none;
   white-space: nowrap;
 }
