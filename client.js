@@ -60,9 +60,9 @@ window.__ModuleLoader__.load({
      * unbound until the user picks one in Settings.
      */
     const DEFAULTS = {
-      'desktop:macos': { code: 'KeyE', modifiers: ['control'] },
-      'desktop:windows': { code: 'KeyE', modifiers: ['control'] },
-      'desktop:linux': { code: 'KeyE', modifiers: ['control'] },
+      'desktop:macos': { code: 'KeyE', modifiers: ['primary'] },
+      'desktop:windows': { code: 'KeyE', modifiers: ['primary'] },
+      'desktop:linux': { code: 'KeyE', modifiers: ['primary'] },
       'web:macos': { code: 'KeyE', modifiers: ['primary', 'shift'] },
       'web:windows': { code: 'KeyE', modifiers: ['primary', 'shift'] },
     }
@@ -89,10 +89,11 @@ window.__ModuleLoader__.load({
     const CSS = `
 .dml-hint {
   position: absolute;
-  top: 8px;
   right: 12px;
+  bottom: calc(100% + 8px);
   z-index: 2;
   pointer-events: none;
+  white-space: nowrap;
 }
 .dml-hint-button {
   display: inline-flex;
@@ -337,17 +338,15 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     //#region Hint component
 
     /**
-     * Top-right composer hint: current shortcut + target mode, click to toggle.
-     * Rendered only while the draft is empty (same moments as the placeholder).
-     * @param props - standard session props plus the injected store and toggle.
-     * @returns the hint, or null while the draft has content.
+     * Composer hint on the right shoulder above the card: current shortcut plus
+     * the target mode, click to toggle. Always visible, so the binding stays
+     * discoverable while typing.
+     * @param props - injected stores, dictionary and toggle callback.
+     * @returns the hint element.
      */
-    function MultiLineHint({ useInput, t, modeStore, shortcutStore, toggle }) {
+    function MultiLineHint({ t, modeStore, shortcutStore, toggle }) {
       const mode = React.useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot, modeStore.getSnapshot)
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
-      const readInput = useInput ?? (() => true)
-      const empty = readInput((state) => state.draft === '' && state.attachmentIds.length === 0)
-      if (!empty) return null
       const action = mode === MODE_MULTI ? t('toSingle') : t('toMulti')
       const meta = mode === MODE_MULTI ? t('submitHint') : null
       return h(

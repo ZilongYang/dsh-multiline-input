@@ -100,6 +100,8 @@ test('applyModeAttribute writes and clears the document marker', () => {
 })
 
 test('formatShortcut renders user-facing key labels', () => {
+  assert.equal(t.formatShortcut({ code: 'KeyE', modifiers: ['primary'] }, 'macos'), 'Cmd+E')
+  assert.equal(t.formatShortcut({ code: 'KeyE', modifiers: ['primary'] }, 'windows'), 'Ctrl+E')
   assert.equal(t.formatShortcut({ code: 'KeyE', modifiers: ['control'] }, 'macos'), 'Ctrl+E')
   assert.equal(t.formatShortcut({ code: 'KeyE', modifiers: ['meta', 'shift'] }, 'macos'), 'Cmd+Shift+E')
   assert.equal(t.formatShortcut({ code: 'KeyE', modifiers: ['primary', 'shift'] }, 'windows'), 'Ctrl+Shift+E')
@@ -120,9 +122,9 @@ test('labelFromCatalog follows the effective binding, including unbound', () => 
   assert.equal(t.labelFromCatalog(undefined, 'macos'), null)
 })
 
-test('default bindings: desktop Ctrl+E, Web Primary+Shift+E, no Linux Web', () => {
+test('default bindings: desktop Primary+E (Cmd/Ctrl), Web Primary+Shift+E, no Linux Web', () => {
   for (const platform of ['macos', 'windows', 'linux']) {
-    assert.deepEqual(t.DEFAULTS[`desktop:${platform}`], { code: 'KeyE', modifiers: ['control'] })
+    assert.deepEqual(t.DEFAULTS[`desktop:${platform}`], { code: 'KeyE', modifiers: ['primary'] })
   }
   for (const platform of ['macos', 'windows']) {
     assert.deepEqual(t.DEFAULTS[`web:${platform}`], { code: 'KeyE', modifiers: ['primary', 'shift'] })

@@ -2,7 +2,7 @@
 
 把 DeepSeek Harness 的对话输入框在**单行 / 多行**之间切换的 Web 客户端插件。
 
-- 默认快捷键 **Ctrl+E**，在输入框为空时显示于右上角；可在 **设置 → 通用 → 快捷键**里改成任意组合（冲突校验、恢复默认都由 DSH 官方界面负责）。
+- 默认快捷键 **Cmd+E（macOS）/ Ctrl+E（Windows / Linux）**，常驻显示在输入框上方右侧；可在 **设置 → 通用 → 快捷键**里改成任意组合（冲突校验、恢复默认都由 DSH 官方界面负责）。
 - 多行模式输入框默认 **4 行高**（3–5 行区间内），内容变多自动长高，到原生 336px 上限后滚动。
 - 多行模式 **Enter 换行、Shift+Enter 发送**；单行模式保持 DSH 原生行为。
 - 模式按设备记住，刷新 / 重启后保持。
@@ -39,8 +39,8 @@ pnpm add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
 | `/`、`@` 菜单打开时的 `Enter` | 选中菜单项 | 选中菜单项 |
 | 输入法候选态的 `Enter` | 交给输入法 | 交给输入法 |
 
-- 按 `Ctrl+E`（或点击右上角提示）在两种模式间循环；切换不清空草稿、不抢焦点。
-- 右上角提示只在**输入框为空**（显示占位符）时出现；开始输入后隐藏，清空后重现。
+- 按 `Cmd+E` / `Ctrl+E`（或点击输入框上方右侧的提示）在两种模式间循环；切换不清空草稿、不抢焦点。
+- 提示**常驻显示**在输入框上方右侧（卡片右肩），输入文字时也不隐藏，方便随时看到当前模式与快捷键。
 - 多行模式下提示会同时显示「Shift+Enter 提交」。
 
 ## 修改快捷键
@@ -49,7 +49,7 @@ pnpm add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
 2. 搜索「多行输入」（命令名：**切换多行输入**，id `ml-input.toggle`）；
 3. 点击右侧键位进入录制，按下新组合即可；冲突时官方界面会提示，可随时恢复默认。
 
-右上角提示实时跟随当前生效的组合；把绑定清空后提示只显示「多行输入 / 单行输入」，点击仍可切换。
+提示实时跟随当前生效的组合；把绑定清空后提示只显示「多行输入 / 单行输入」，点击仍可切换。
 
 ## 实现说明
 
@@ -57,7 +57,7 @@ pnpm add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
 
 - **模式状态**：模块级 store + `localStorage['dsh-ml-input.mode.v1']`，投影为 `<html data-dsh-ml-input="multi">`；
 - **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input][contenteditable="true"]` 设 `min-height: calc(4 * 1lh + 8px)`，不碰 DSH 的滚动上限；
-- **提示**：注册到 `conversation.input.overlay` 座位，用标准 hook `useInput` 判断草稿为空；
+- **提示**：注册到 `conversation.input.overlay` 座位，绝对定位到卡片上方右侧（右肩）常驻显示；
 - **Enter / Shift+Enter**：在 document 捕获阶段拦下多行模式下的 `Enter`，向编辑器重放一个翻转了 `shiftKey` 的合成按键——仍由 DSH 自己的 composer keymap 决定「换行」还是「提交」，因此撤销历史、输入法保护、busy-enter（queue/steer）、菜单仲裁全部保持原逻辑；
 - **快捷键**：通过 `ctx.shortcuts.register()` 注册命令，编辑与持久化完全交给 DSH。
 
