@@ -1,0 +1,6 @@
+# DSH file sandbox blocks the default npm cache; point npm/pnpm here.
+.npm-cache/
+
+# System and editor files
+.DS_Store
+*.log

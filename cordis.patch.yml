@@ -1,0 +1,9 @@
+# Bundle layer of dsh-ml-input: one Host row.
+#
+# The feature is browser-only; this row exists so the package is a real bundle
+# (the plugin manager refuses a package without a bundle patch) and so
+# client-modules discovers the package's `dsh.client` declaration and serves
+# `client.js` to the Web GUI.
+- insert:
+    - id: ml-input
+      name: 'dsh-ml-input'

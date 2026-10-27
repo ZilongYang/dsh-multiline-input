@@ -1,0 +1,60 @@
+{
+  "name": "dsh-ml-input",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Single/multi-line composer toggle for DeepSeek Harness: an editable Ctrl+E shortcut, a 4-line floor for multi-line drafts, and Shift+Enter to send.",
+  "license": "MIT",
+  "author": "ZilongYang",
+  "icon": "./icon.svg",
+  "keywords": [
+    "deepseek",
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "client-plugin",
+    "multiline",
+    "composer",
+    "web"
+  ],
+  "engines": {
+    "node": ">=20.3"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/zh.json",
+    "locale/en.json",
+    "README.md",
+    "ROADMAP.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    },
+    "compatibility": {
+      "dsh": ">=0.2.1-rc.3 <0.3.0-0"
+    }
+  }
+}
