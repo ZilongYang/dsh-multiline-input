@@ -13,7 +13,14 @@
 
 ## 2. 安装
 
-- [ ] 在「插件」页以绝对路径安装本目录，或 `dsh plugin --profile <profile> add link:<本目录>`
+> 本机运行中的 DeepSeek Harness 使用 `desktop` profile，由应用独占；`dsh plugin --profile desktop` 会报
+> `profile "desktop" is managed exclusively by the Electron application`。
+
+- [x] 方式一（应用内）：「插件」页 → 添加插件 → 绝对路径本目录 → 安装 → 启用
+- [x] 方式二（开发期手动 link，已在 2026-10-28 执行）：
+  `cd ~/.dsh/profiles/desktop && pnpm add link:<本目录>`，
+  再把 `dsh-ml-input` 追加进 `package.json` 的 `dsh.profile.bundles`；
+  profile 的 `patchReload: live` 会自动 reconcile（曾用临时文件哨兵验证 Host 行于 2026-10-27T16:30:37Z 激活）
 - [ ] 插件出现在已安装列表，且能启用 / 禁用
 - [ ] 刷新页面后插件加载（无控制台报错；若报错记录完整堆栈）
 

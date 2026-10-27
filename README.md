@@ -17,7 +17,15 @@
 dsh plugin --profile <profile> add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
 ```
 
-启用后刷新页面即可；插件清单（`package.json` / `cordis.patch.yml`）变化才需要重启应用。
+**开发期手动 link（桌面版使用的 `desktop` profile 由应用独占，CLI 会拒绝）**：
+
+```sh
+cd ~/.dsh/profiles/desktop
+pnpm add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
+# 再把 "dsh-ml-input" 追加到 package.json 的 dsh.profile.bundles
+```
+
+该 profile 的 `patchReload: live` 让 HMR 在 `package.json` / 补丁文件变化后自动重载；装完刷新页面即可。插件清单变化无需重启应用。
 
 **卸载**：插件页关闭 / 卸载，或 `dsh plugin --profile <profile> remove dsh-ml-input`。
 
