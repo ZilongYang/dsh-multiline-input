@@ -2,7 +2,7 @@
 
 把 DeepSeek Harness 的对话输入框在**单行 / 多行**之间切换的 Web 客户端插件。
 
-- 默认快捷键 **Cmd+E（macOS）/ Ctrl+E（Windows / Linux）**，显示在输入框卡片顶部的一条窄条上；可在 **设置 → 通用 → 快捷键**里改成任意组合（冲突校验、恢复默认都由 DSH 官方界面负责）。
+- 默认快捷键 **Cmd+E（macOS）/ Ctrl+E（Windows / Linux）**，以输入框上沿右侧的一个小 tab 形式常驻显示；可在 **设置 → 通用 → 快捷键**里改成任意组合（冲突校验、恢复默认都由 DSH 官方界面负责）。
 - 多行模式输入框默认 **4 行高**（3–5 行区间内），内容变多自动长高，到原生 336px 上限后滚动。
 - 多行模式 **Enter 换行、Shift+Enter 发送**；单行模式保持 DSH 原生行为。
 - 模式按设备记住，刷新 / 重启后保持。
@@ -40,7 +40,7 @@ pnpm add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
 | 输入法候选态的 `Enter` | 交给输入法 | 交给输入法 |
 
 - 按 `Cmd+E` / `Ctrl+E`（或点击输入框上方右侧的提示）在两种模式间循环；切换不清空草稿、不抢焦点。
-- 提示**常驻显示**在卡片顶部靠右的窄条里：与卡片同底色、宽度随文字自适应、底部有一条淡分割线（只覆盖文字块），输入文字时也不隐藏。
+- 提示**常驻显示**为输入框上沿右侧的一个小 tab：与输入框同底色、宽度随文字自适应、像给输入框加了个 tab，底部有一条与卡片描边同色的细线；输入文字时也不隐藏。
 - 多行模式下提示会同时显示「Shift+Enter 提交」。
 
 ## 修改快捷键
@@ -57,7 +57,7 @@ pnpm add link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input
 
 - **模式状态**：模块级 store + `localStorage['dsh-ml-input.mode.v1']`，投影为 `<html data-dsh-ml-input="multi">`；
 - **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input][contenteditable="true"]` 设 `min-height: calc(4 * 1lh + 8px)`，不碰 DSH 的滚动上限；
-- **提示**：注册到 `conversation.input.overlay` 座位，绝对定位成卡片顶部的一条窄条（同底色 + 0.5px 淡分割线），并为卡片预留顶部内边距；
+- **提示**：注册到 `conversation.input.overlay` 座位，绝对定位成卡片上沿右侧的小 tab（`bottom: 100%`、同底色、底部 0.5px 细线、宽度随文字），不占用输入区布局；
 - **Enter / Shift+Enter**：在 document 捕获阶段拦下多行模式下的 `Enter`，向编辑器重放一个翻转了 `shiftKey` 的合成按键——仍由 DSH 自己的 composer keymap 决定「换行」还是「提交」，因此撤销历史、输入法保护、busy-enter（queue/steer）、菜单仲裁全部保持原逻辑；
 - **快捷键**：通过 `ctx.shortcuts.register()` 注册命令，编辑与持久化完全交给 DSH。
 

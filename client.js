@@ -87,29 +87,27 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
+/* A small tab riding on the card's top shoulder: same fill as the card, so it
+   reads as one piece, with the card's own hairline continuing under it. */
 .dml-hint {
   position: absolute;
-  top: 0;
-  right: 0;
+  right: calc(var(--dsw-radius-panel) + 4px);
+  bottom: 100%;
   z-index: 2;
   display: flex;
   align-items: center;
   justify-content: flex-end;
   box-sizing: border-box;
-  /* Hug the text: the block and its hairline only span the hint, not the card. */
+  /* Hug the text: the tab and its hairline only span the hint. */
   width: max-content;
   max-width: 100%;
-  height: 26px;
+  height: 24px;
   padding: 0 12px;
   background: var(--dsw-specific-input-major);
-  border-bottom: 0.5px solid var(--dsw-alias-border-l1);
-  border-radius: 0 var(--dsw-radius-panel) 0 0;
+  border-bottom: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md) var(--dsw-radius-md) 0 0;
   pointer-events: none;
   white-space: nowrap;
-}
-/* The hint bar is part of the card: reserve its height above the text area. */
-body [data-composer-card]:has(.dml-hint) {
-  padding-top: 34px;
 }
 .dml-hint-button {
   display: inline-flex;
