@@ -90,7 +90,7 @@ dsh-ml-input/
 
 - 测试：`npm test`（`node --test`，当前 12 条用例）。
 - 语法：`node --check client.js && node --check index.js`。
-- 调试：只改 `client.js` / 样式时刷新页面即可拿到新版本；改了 `package.json` / `cordis.patch.yml` 才需要重启。
+- 调试：HMR 监听 profile 的 `package.json` 与补丁文件（会触发 profile 重组），但默认忽略 `**/node_modules`，所以**链接安装的 `client.js` 改动不会被热加载**。改完客户端代码后：在「插件」页把本插件关一次再开（或重启应用），然后刷新页面。
 - 无构建步骤：`client.js` 直接由 DSH 的客户端模块系统加载（与 `dsh-session-titler` 同款手写 bundle）。
 
 ## 已知限制
