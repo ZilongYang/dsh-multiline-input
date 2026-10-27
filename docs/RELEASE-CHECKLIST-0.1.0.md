@@ -1,67 +1,69 @@
 # dsh-multiline-input 0.1.0 发版 / 执行检查清单
 
-> 每次发版或装到本机验收时逐条勾选；未勾选的项目要写明原因。
+> 状态（2026-10-28）：0.1.0 已发布到 npm 与 GitHub；市场 PR #9938 的条目校验已通过，仅剩「仓库满 24h」的自动门槛。勾选为实测结果，未勾选项注明原因。
 
 ## 1. 代码与静态检查
 
 - [x] `node --check client.js`
 - [x] `node --check index.js`
-- [x] `npm test`（`node --test`）全绿
+- [x] `npm test`（`node --test`）13 条全绿
 - [x] `locale/zh.json`、`locale/en.json`、`package.json` 可被 JSON 解析
-- [x] `npm --cache .npm-cache pack --dry-run` 文件清单包含 `client.js`、`cordis.patch.yml`、`locale/*`、README、docs
+- [x] `npm --cache /tmp/dsh-npm-cache pack --dry-run`：17 个文件，含 `client.js`、`cordis.patch.yml`、`locale/*`、`assets/*`、`screenshots.json`、README、docs
 - [x] `package.json` 版本 = `0.1.0`，`dsh.compatibility.dsh` = `>=0.2.1-rc.3 <0.3.0-0`
 
 ## 2. 发布结果（2026-10-28）
 
-- GitHub：https://github.com/ZilongYang/dsh-multiline-input （tag `v0.1.0`，Release 已创建）
-- npm：`dsh-multiline-input@0.1.0`（`npm publish` 已返回成功；公开版本端点有时需数分钟生效，以下方实测为准）
-- awesome-dsh-plugin PR：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938
-- 市场截图：`assets/screenshot-1-single-line.png`、`assets/screenshot-2-multiline.png`；`screenshots.json` 已提交
+- GitHub：https://github.com/ZilongYang/dsh-multiline-input
+  - tag `v0.1.0`；Release：https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.0
+  - topics：`dsh-plugin` / `deepseek-harness` / `dsh` / `ui` / `composer` / `multiline`
+- npm：`dsh-multiline-input@0.1.0`
+  - `npm publish` 成功；公开版本端点 `https://registry.npmjs.org/dsh-multiline-input/0.1.0` = 200
+  - `npm view dsh-multiline-input version dist.fileCount` = `0.1.0` / `17`
+- 市场条目：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938
+  - 只新增 `data/plugins/ZilongYang__dsh-multiline-input.yml`（category `ui`）
+  - `check` 通过；`Submission gate` 失败原因仅 **仓库 0.0 天 < 1 天**，提示会自动重跑、约 24h 后转绿，无需重提
+- 市场截图（1360 宽，含卡片底部与状态行）：`assets/screenshot-1-single-line.png`（1360×330）、`assets/screenshot-2-multiline.png`（1360×464）；`screenshots.json` 已提交
+- npm tarball 内的截图仍是首发旧图（市场读取仓库，不受影响；如需同步可发 0.1.1）
 
 ## 3. 安装
 
-> 本机运行中的 DeepSeek Harness 使用 `desktop` profile，由应用独占；`dsh plugin --profile desktop` 会报
-> `profile "desktop" is managed exclusively by the Electron application`。
+> 本机 DeepSeek Harness 使用 `desktop` profile，由应用独占；`dsh plugin --profile desktop` 会报 `profile "desktop" is managed exclusively by the Electron application`。
 
 - [x] 方式一（应用内）：「插件」页 → 添加插件 → 绝对路径本目录 → 安装 → 启用
-- [x] 方式二（开发期手动 link，已在 2026-10-28 执行）：
-  `cd ~/.dsh/profiles/desktop && pnpm add link:<本目录>`，
-  再把 `dsh-multiline-input` 追加进 `package.json` 的 `dsh.profile.bundles`；
-  profile 的 `patchReload: live` 会自动 reconcile（曾用临时文件哨兵验证 Host 行于 2026-10-27T16:30:37Z 激活）
-- [ ] 插件出现在已安装列表，且能启用 / 禁用
-- [ ] 刷新页面后插件加载（无控制台报错；若报错记录完整堆栈）
+- [x] 方式二（开发期手动 link）：
+  `cd ~/.dsh/profiles/desktop && pnpm add link:<本目录>`，并把 `dsh-multiline-input` 追加进 `package.json` 的 `dsh.profile.bundles`
+- [x] 插件出现在已安装列表，且能启用 / 禁用（改名后重新安装并确认）
+- [x] 刷新 / 重启应用后插件加载（重命名后重启验证，控制台无报错）
 
-## 3. 实机验收（空会话 + 有内容会话各一次）
+## 4. 实机验收
 
-- [ ] 输入框上方右侧常驻显示 `Cmd+E 多行输入`（macOS；Windows / Linux 为 `Ctrl+E`）
-- [ ] 输入文字后提示仍在（常驻，不隐藏）
-- [ ] `Cmd+E` / `Ctrl+E` 在编辑器内可切换；在页面空白处也可切换
-- [ ] 多行模式输入框最小高度 4 行；切回单行恢复原高度
-- [ ] 多行模式 `Enter` 换行（`Cmd/Ctrl+Z` 可撤销）
-- [ ] 多行模式 `Shift+Enter` 发送
-- [ ] 多行模式 `Cmd/Ctrl+Enter` 仍为加速提交
-- [ ] 输入 `/` 打开菜单后 `Enter` 仍选中菜单项，不换行
-- [ ] 输入 `@` 打开引用菜单后 `Enter` 仍选中菜单项
-- [ ] 中文输入法候选态按 `Enter` 不误触，选词正常
-- [ ] 在设置搜索框 / 会话重命名输入框内按 `Ctrl+E` 不切换模式
-- [ ] 刷新页面后模式保持；重启应用后模式保持
-- [ ] `设置 → 通用 → 快捷键` 中出现「切换多行输入」，可改绑、可恢复默认
-- [ ] 改绑后右上角提示立即更新；清空绑定后提示只显示文案且可点击
-- [ ] 禁用插件后：提示消失、高度恢复、`Ctrl+E` 不再切换、无残留 DOM / 控制台报错
+- [x] 输入框上方右侧常驻显示 `Cmd+E 多行输入`（macOS）
+- [x] 输入文字后提示仍在（常驻）
+- [x] `Cmd+E` 切换单行 / 多行；页面空白处也可切换（用户实测）
+- [x] 多行模式最小高度 4 行；切回单行恢复原高度（截图对比）
+- [x] 多行模式 `Shift+Enter` 发送、`Enter` 换行（用户实测）
+- [ ] `Cmd/Ctrl+Enter` 加速提交（未专项回归）
+- [ ] `/`、`@` 菜单打开时 `Enter` 选中菜单项（未专项回归）
+- [ ] 中文输入法候选态 `Enter` 不误触（未专项回归）
+- [ ] 设置搜索框 / 会话重命名框内 `Ctrl+E` 不切换（未专项回归）
+- [ ] 改名后刷新 / 重启模式保持（storage key 变更，需再验一次）
+- [ ] `设置 → 通用 → 快捷键` 出现「切换多行输入」，可改绑 / 恢复默认（未在界面逐项复核）
+- [ ] 改绑后 tab 文案立即更新；清空绑定后只显示文案且可点击（未复核）
+- [ ] 禁用插件后提示消失、高度恢复、无残留 DOM / 监听（未专项复核）
 
-## 4. 回滚
+## 5. 回滚
 
 - [ ] 插件页关闭或卸载；或 `dsh plugin --profile <profile> remove dsh-multiline-input`
-- [ ] 回滚后与安装前一致（原输入框行为、快捷键设置里的条目消失）
+- [ ] 回滚后与安装前一致（原输入框行为、快捷键条目消失）
 
-## 5. 存档
+## 6. 存档
 
-- [ ] `docs/PLAN-2026-10-27.md` 已保存获批原文
-- [ ] 实施偏差已回填到计划文末
-- [ ] README 文档索引、ROADMAP 链接已更新
-- [ ] git 首次提交完成（本地）
+- [x] `docs/PLAN-2026-10-27.md` 已保存获批原文
+- [x] 实施偏差已回填到计划文末（含改名、发布、截图调整）
+- [x] README 文档索引、ROADMAP 链接已更新
+- [x] git 提交与远端推送完成
 
 ## 备注
 
-- 本版本不发布 npm、不做市场条目、不建远端。
-- 依赖 DSH `0.2.1-rc.3` 的 composer DOM 锚点；升级 DSH 后按第 3 节重新验收。
+- 0.1.0 已发布（npm + GitHub）；市场 PR 只等仓库满 24h 的 CI 门槛。
+- 依赖 DSH `0.2.1-rc.3` 的 composer DOM 锚点；升级 DSH 后按第 4 节重新验收。
