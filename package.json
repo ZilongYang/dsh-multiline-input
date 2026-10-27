@@ -1,8 +1,8 @@
 {
-  "name": "dsh-ml-input",
+  "name": "dsh-multiline-input",
   "version": "0.1.0",
   "type": "module",
-  "description": "Single/multi-line composer toggle for DeepSeek Harness: an editable Ctrl+E shortcut, a 4-line floor for multi-line drafts, and Shift+Enter to send.",
+  "description": "Single/multi-line composer toggle for DeepSeek Harness: an editable Cmd/Ctrl+E shortcut, a tab hint on the composer, a 4-line floor for multi-line drafts, and Shift+Enter to send.",
   "license": "MIT",
   "author": "ZilongYang",
   "icon": "./icon.svg",
@@ -12,8 +12,10 @@
     "dsh",
     "dsh-plugin",
     "client-plugin",
-    "multiline",
     "composer",
+    "multiline",
+    "input",
+    "keyboard-shortcut",
     "web"
   ],
   "engines": {
@@ -35,6 +37,8 @@
     "icon.svg",
     "locale/zh.json",
     "locale/en.json",
+    "screenshots.json",
+    "assets",
     "README.md",
     "ROADMAP.md",
     "CHANGELOG.md",
@@ -56,5 +60,13 @@
     "compatibility": {
       "dsh": ">=0.2.1-rc.3 <0.3.0-0"
     }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZilongYang/dsh-multiline-input.git"
+  },
+  "homepage": "https://github.com/ZilongYang/dsh-multiline-input#readme",
+  "bugs": {
+    "url": "https://github.com/ZilongYang/dsh-multiline-input/issues"
   }
 }

@@ -1,4 +1,4 @@
-# dsh-ml-input 0.1.0 发版 / 执行检查清单
+# dsh-multiline-input 0.1.0 发版 / 执行检查清单
 
 > 每次发版或装到本机验收时逐条勾选；未勾选的项目要写明原因。
 
@@ -19,7 +19,7 @@
 - [x] 方式一（应用内）：「插件」页 → 添加插件 → 绝对路径本目录 → 安装 → 启用
 - [x] 方式二（开发期手动 link，已在 2026-10-28 执行）：
   `cd ~/.dsh/profiles/desktop && pnpm add link:<本目录>`，
-  再把 `dsh-ml-input` 追加进 `package.json` 的 `dsh.profile.bundles`；
+  再把 `dsh-multiline-input` 追加进 `package.json` 的 `dsh.profile.bundles`；
   profile 的 `patchReload: live` 会自动 reconcile（曾用临时文件哨兵验证 Host 行于 2026-10-27T16:30:37Z 激活）
 - [ ] 插件出现在已安装列表，且能启用 / 禁用
 - [ ] 刷新页面后插件加载（无控制台报错；若报错记录完整堆栈）
@@ -44,7 +44,7 @@
 
 ## 4. 回滚
 
-- [ ] 插件页关闭或卸载；或 `dsh plugin --profile <profile> remove dsh-ml-input`
+- [ ] 插件页关闭或卸载；或 `dsh plugin --profile <profile> remove dsh-multiline-input`
 - [ ] 回滚后与安装前一致（原输入框行为、快捷键设置里的条目消失）
 
 ## 5. 存档

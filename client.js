@@ -1,5 +1,5 @@
 /**
- * Client half of dsh-ml-input.
+ * Client half of dsh-multiline-input.
  *
  * Single/multi-line composer toggle for the DSH Web GUI:
  *
@@ -9,7 +9,7 @@
  *   - a top-right hint inside the composer card (`conversation.input.overlay`),
  *     shown only while the draft is empty;
  *   - a taller composer floor in multi-line mode, driven by
- *     `<html data-dsh-ml-input="multi">` and one CSS rule;
+ *     `<html data-dsh-multiline-input="multi">` and one CSS rule;
  *   - Enter / Shift+Enter swapped in multi-line mode by re-dispatching the
  *     same keydown with the opposite `shiftKey`. DSH's own composer keymap
  *     keeps deciding newline vs submit, so undo history, the IME guard,
@@ -29,22 +29,22 @@
  *   - packages/client/modules/README.zh.md
  */
 window.__ModuleLoader__.load({
-  id: 'dsh-ml-input',
+  id: 'dsh-multiline-input',
   factory(require) {
     const React = require('react')
     const h = React.createElement
 
     /** Locale namespace and the style element id (a reload must not stack styles). */
-    const NS = 'dsh-ml-input'
-    const STYLE_ID = 'dsh-ml-input-style'
+    const NS = 'dsh-multiline-input'
+    const STYLE_ID = 'dsh-multiline-input-style'
 
     /** Device-local mode preference; the mode itself is not Session data. */
-    const MODE_STORAGE_KEY = 'dsh-ml-input.mode.v1'
+    const MODE_STORAGE_KEY = 'dsh-multiline-input.mode.v1'
     /** `<html>` marker read by the height rule. */
-    const MODE_ATTRIBUTE = 'data-dsh-ml-input'
+    const MODE_ATTRIBUTE = 'data-dsh-multiline-input'
 
     /** Shortcut command id; dotted form so DSH can persist user overrides. */
-    const COMMAND_ID = 'ml-input.toggle'
+    const COMMAND_ID = 'multiline-input.toggle'
     /** Composer seats: after the slash menu (order 0), above the card content. */
     const HINT_ORDER = 10
     /** Multi-line floor in text lines (the requested 3–5 range). */
@@ -89,7 +89,7 @@ window.__ModuleLoader__.load({
     const CSS = `
 /* A small tab riding on the card's top shoulder: same fill as the card, so it
    reads as one piece, with the card's own hairline continuing under it. */
-.dml-hint {
+.dmi-hint {
   position: absolute;
   right: calc(var(--dsw-radius-panel) + 4px);
   bottom: 100%;
@@ -109,7 +109,7 @@ window.__ModuleLoader__.load({
   pointer-events: none;
   white-space: nowrap;
 }
-.dml-hint-button {
+.dmi-hint-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -125,15 +125,15 @@ window.__ModuleLoader__.load({
   cursor: pointer;
   pointer-events: auto;
 }
-.dml-hint-button:hover {
+.dmi-hint-button:hover {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-secondary);
 }
-.dml-hint-key {
+.dmi-hint-key {
   color: var(--dsw-alias-label-secondary);
   font-weight: 500;
 }
-.dml-hint-sep {
+.dmi-hint-sep {
   color: var(--dsw-alias-label-caption);
   opacity: 0.6;
 }
@@ -146,8 +146,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
   }
 }
 @media (max-width: 720px) {
-  .dml-hint-sep,
-  .dml-hint-meta {
+  .dmi-hint-sep,
+  .dmi-hint-meta {
     display: none;
   }
 }
@@ -365,12 +365,12 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       const meta = mode === MODE_MULTI ? t('submitHint') : null
       return h(
         'div',
-        { className: 'dml-hint' },
+        { className: 'dmi-hint' },
         h(
           'button',
           {
             type: 'button',
-            className: 'dml-hint-button',
+            className: 'dmi-hint-button',
             title: t('hintTitle'),
             'aria-label': shortcut === null ? action : t('ariaLabel', { action, keys: shortcut }),
             onMouseDown: (event) => {
@@ -382,10 +382,10 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
               toggle()
             },
           },
-          meta !== null && h('span', { className: 'dml-hint-meta' }, meta),
-          meta !== null && h('span', { className: 'dml-hint-sep', 'aria-hidden': true }, '·'),
-          shortcut !== null && h('span', { className: 'dml-hint-key' }, shortcut),
-          h('span', { className: 'dml-hint-label' }, action),
+          meta !== null && h('span', { className: 'dmi-hint-meta' }, meta),
+          meta !== null && h('span', { className: 'dmi-hint-sep', 'aria-hidden': true }, '·'),
+          shortcut !== null && h('span', { className: 'dmi-hint-key' }, shortcut),
+          h('span', { className: 'dmi-hint-label' }, action),
         ),
       )
     }
@@ -505,7 +505,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             dispose = scope.shortcuts.register({
               id: COMMAND_ID,
               label: () => t('toggleLabel'),
-              aliases: ['多行输入', '单行输入', 'multiline', 'multi-line', 'ml-input', 'input mode'],
+              aliases: ['多行输入', '单行输入', 'multiline', 'multi-line', 'multiline-input', 'input mode'],
               defaults: DEFAULTS,
               regions: ['page', 'editable'],
               modals: [],
@@ -526,7 +526,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
               },
             })
           } catch (error) {
-            console.warn('[dsh-ml-input] shortcut registration skipped:', error)
+            console.warn('[dsh-multiline-input] shortcut registration skipped:', error)
           }
           return () => {
             dispose()

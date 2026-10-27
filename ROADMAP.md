@@ -3,7 +3,7 @@
 ## 0.1.0（当前）
 
 - [x] 单行 / 多行双态切换，模式按设备持久化（`localStorage`）
-- [x] 官方快捷键命令（`ml-input.toggle`，桌面默认 Ctrl+E，可在设置中改绑）
+- [x] 官方快捷键命令（`multiline-input.toggle`，桌面默认 Ctrl+E，可在设置中改绑）
 - [x] 右上角提示（仅空输入时显示，实时显示当前生效键位）
 - [x] 多行模式 4 行起高，随内容长高，沿用 DSH 336px 滚动上限
 - [x] 多行模式 Enter 换行 / Shift+Enter 发送，保留撤销、输入法、菜单、busy-enter 语义

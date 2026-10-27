@@ -93,8 +93,8 @@ test('applyModeAttribute writes and clears the document marker', () => {
   t.applyModeAttribute(element, 'multi')
   t.applyModeAttribute(element, 'single')
   assert.deepEqual(calls, [
-    ['set', 'data-dsh-ml-input', 'multi'],
-    ['remove', 'data-dsh-ml-input'],
+    ['set', 'data-dsh-multiline-input', 'multi'],
+    ['remove', 'data-dsh-multiline-input'],
   ])
   assert.doesNotThrow(() => t.applyModeAttribute(null, 'multi'))
 })
@@ -130,7 +130,7 @@ test('default bindings: desktop Primary+E (Cmd/Ctrl), Web Primary+Shift+E, no Li
     assert.deepEqual(t.DEFAULTS[`web:${platform}`], { code: 'KeyE', modifiers: ['primary', 'shift'] })
   }
   assert.equal(t.DEFAULTS['web:linux'], undefined)
-  assert.equal(t.COMMAND_ID, 'ml-input.toggle')
+  assert.equal(t.COMMAND_ID, 'multiline-input.toggle')
 })
 
 test('shouldIntercept: multi-line Enter becomes a newline, Shift+Enter submits', () => {
@@ -155,6 +155,6 @@ test('shouldIntercept passes everything that is not the multi-line Enter gesture
 
 test('the newline floor matches the 3-5 line requirement', () => {
   assert.equal(t.MIN_LINES, 4)
-  assert.equal(t.MODE_ATTRIBUTE, 'data-dsh-ml-input')
-  assert.equal(t.MODE_STORAGE_KEY, 'dsh-ml-input.mode.v1')
+  assert.equal(t.MODE_ATTRIBUTE, 'data-dsh-multiline-input')
+  assert.equal(t.MODE_STORAGE_KEY, 'dsh-multiline-input.mode.v1')
 })

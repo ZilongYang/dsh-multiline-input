@@ -1,5 +1,5 @@
 /**
- * Host half of dsh-ml-input.
+ * Host half of dsh-multiline-input.
  *
  * The feature is browser-only. This row exists so the package is a real
  * bundle row that the Plugins page can install, enable and disable; the
@@ -11,7 +11,7 @@
  *   - packages/util/package-manifest/src/types.ts (DshClientManifest)
  *   - packages/boot/plugin-manager/src/index.ts ("not-bundle")
  */
-export const name = 'ml-input'
+export const name = 'multiline-input'
 
 /** The Host half owns no services; it only keeps the bundle row alive. */
 export function apply() {}
