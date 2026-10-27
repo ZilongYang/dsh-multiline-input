@@ -11,7 +11,14 @@
 - [x] `npm --cache .npm-cache pack --dry-run` 文件清单包含 `client.js`、`cordis.patch.yml`、`locale/*`、README、docs
 - [x] `package.json` 版本 = `0.1.0`，`dsh.compatibility.dsh` = `>=0.2.1-rc.3 <0.3.0-0`
 
-## 2. 安装
+## 2. 发布结果（2026-10-28）
+
+- GitHub：https://github.com/ZilongYang/dsh-multiline-input （tag `v0.1.0`，Release 已创建）
+- npm：`dsh-multiline-input@0.1.0`（`npm publish` 已返回成功；公开版本端点有时需数分钟生效，以下方实测为准）
+- awesome-dsh-plugin PR：https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938
+- 市场截图：`assets/screenshot-1-single-line.png`、`assets/screenshot-2-multiline.png`；`screenshots.json` 已提交
+
+## 3. 安装
 
 > 本机运行中的 DeepSeek Harness 使用 `desktop` profile，由应用独占；`dsh plugin --profile desktop` 会报
 > `profile "desktop" is managed exclusively by the Electron application`。

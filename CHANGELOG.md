@@ -2,7 +2,7 @@
 
 ## 0.1.0 — 2026-10-28
 
-首个版本。
+首个公开发布版本（npm + GitHub）。
 
 - 对话输入框单行 / 多行双态切换，模式按设备持久化。
 - 通过 DSH 官方快捷键服务注册 `multiline-input.toggle`：桌面默认 `Cmd+E`（macOS）/ `Ctrl+E`（Windows / Linux），可在「设置 → 通用 → 快捷键」改绑、恢复默认、查看冲突。
