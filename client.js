@@ -89,18 +89,32 @@ window.__ModuleLoader__.load({
     const CSS = `
 .dml-hint {
   position: absolute;
-  right: 12px;
-  bottom: calc(100% + 8px);
+  top: 0;
+  left: 0;
+  right: 0;
   z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  box-sizing: border-box;
+  height: 26px;
+  padding: 0 12px;
+  background: var(--dsw-specific-input-major);
+  border-bottom: 0.5px solid var(--dsw-alias-border-l1);
+  border-radius: var(--dsw-radius-panel) var(--dsw-radius-panel) 0 0;
   pointer-events: none;
   white-space: nowrap;
+}
+/* The hint bar is part of the card: reserve its height above the text area. */
+body [data-composer-card]:has(.dml-hint) {
+  padding-top: 34px;
 }
 .dml-hint-button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   margin: 0;
-  padding: 2px 6px;
+  padding: 1px 6px;
   border: 0;
   border-radius: var(--dsw-radius-sm, 6px);
   background: transparent;
