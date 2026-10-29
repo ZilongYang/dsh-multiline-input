@@ -117,6 +117,24 @@ dsh-multiline-input/
 - 语法：`node --check client.js && node --check index.js`。
 - 调试：HMR 默认忽略 `**/node_modules`，链接安装的 `client.js` 改动不会被热加载；改完客户端代码后在插件页关/开一次（或重启应用），再刷新页面。
 
+## 发版
+
+一次发版四步，缺一不可（2026-10-29 明确要求：**新版本必须同步官网** `https://dsh.zlmix.com/multiline-input/`）：
+
+1. **校验**：`node --test`、`node --check client.js && node --check index.js` 全绿；`package.json` 版本号、`CHANGELOG.md`、README / ROADMAP 的版本与链接写对。
+2. **GitHub**：`git tag vX.Y.Z && git push origin main --tags`；`gh release create vX.Y.Z --title "…" --notes-file …`。
+3. **npm**：`npm publish`（账号 `zlmix`）。本机沙箱下先设 `npm_config_cache=/tmp/dsh-npm-cache npm_config_logs_dir=/tmp/dsh-npm-logs`，否则 npm 写不了 `~/.npm/_logs`；发布后回读 `https://registry.npmjs.org/dsh-multiline-input/X.Y.Z`（registry 约 30s 后生效）和 tarball 里的 `client.js`。
+4. **官网**：在 `~/zWork/ai/zl-plugins/site` 同步下面四处，`node scripts/check-site.mjs` 通过后 `./scripts/deploy.sh`（脚本会先备份线上、再上传并逐路由验证 + 校验 `index.html` 与线上 sha256）：
+
+| 官网位置 | 改什么 |
+|---|---|
+| `data/plugins.json` | 该插件的 `version`、`released`，以及 `site.updated` |
+| `multiline-input/index.html` | JSON-LD `softwareVersion`、hero `data-version`、`pkg-line`、版本 chip；实现描述有变化时同步正文 |
+| `index.html` | 插件卡 `data-version`、版本 chip、JSON-LD `softwareVersion` |
+| `sitemap.xml` | 首页与该插件页的 `lastmod` |
+
+每次发版的打勾清单存到 `docs/RELEASE-CHECKLIST-<版本>.md`，并在上面的文档索引与 ROADMAP 里挂链接。站点自检若撞上**其它插件仓库「版本号已 bump、npm 未发」的中途**，用 `CHECK_SITE_SKIP_CROSS=<package>` 显式跳过那一条（跳过只留 warning），并在清单里记一笔原因。
+
 ## 已知限制
 
 - 仅作用于 Web GUI（桌面版与浏览器），TUI / CLI 不适用。

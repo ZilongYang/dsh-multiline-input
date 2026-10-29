@@ -48,12 +48,26 @@
 - 市场：awesome-dsh-plugin PR #9938 已于 2026-10-28 20:21Z 合并（MERGED）；市场读取仓库 + npm，`latest` 自动指向 0.1.1，无需重提 PR
 - 截图：`assets/` 沿用 0.1.0（tab 外观与位置未变，仅上方状态行上移 24px），未重截
 
-## 6. 本机安装（desktop profile，link 安装）
+## 6. 官网同步（dsh.zlmix.com，2026-10-29）
+
+> 子龙 2026-10-29 明确：发布新版本必须同步官网对应插件页。站点项目：`~/zWork/ai/zl-plugins/site`（本地仓，无远端；部署走 tar over SSH）。
+
+- [x] `data/plugins.json`：multiline-input `version` 0.1.0→`0.1.1`、`released`→2026-10-29、`site.updated`→2026-10-29
+- [x] `multiline-input/index.html`：JSON-LD `softwareVersion`、hero `data-version`、`pkg-line`、版本 chip → 0.1.1；**3 处已过时的实现描述**（亮点卡、原理第 2 步、实现链路图）从 `conversation.input.overlay` + 绝对定位改成 `conversation.input.dock` 一行（`order: 1000`、占 24px、不遮上方卡片）；兼容性表新增「0.1.1 起的布局」一行
+- [x] `index.html`：插件卡 `data-version` / 版本 chip、JSON-LD `softwareVersion` → 0.1.1
+- [x] `sitemap.xml`：首页与 `/multiline-input/` 的 `lastmod` → 2026-10-29
+- [x] 站点提交：`440d0d5`（内容）、`6b35f00`（自检开关 `CHECK_SITE_SKIP_CROSS` + README 说明）
+- [x] 自检：`CHECK_SITE_SKIP_CROSS=dsh-session-mng node scripts/check-site.mjs` → **0 error / 1 warning**。跳过原因：邻居仓库 `dsh-session-mng` 已 bump 到 `0.2.0`（另一条发布流水线在做，npm 仍是 `0.1.4`），本站 session-mng 数据（0.1.2）**未改动**，等它发版后补
+- [x] 部署：`CHECK_SITE_SKIP_CROSS=dsh-session-mng ./scripts/deploy.sh` → 线上备份 `/opt/1panel/www/sites/dsh.zlmix.com/backups/20261029-172205`；8 条路由 200、未知路径 404、`index.html` 与线上 sha256 一致
+- [x] 线上回读：`/multiline-input/` 的 JSON-LD / `data-version` / `pkg-line` / chip = 0.1.1，`conversation.input.overlay` **0 处**、`conversation.input.dock` 3 处，兼容性表含「Layout since 0.1.1」；首页卡片与 JSON-LD = 0.1.1；`sitemap.xml` 的 lastmod = 2026-10-29
+- [ ] 后续：`dsh-session-mng 0.2.0` 发布后，把站点 session-mng 条目（当前 0.1.2，npm 已 0.1.4）与页面版本一并更新，再去掉 `CHECK_SITE_SKIP_CROSS` 跑一次全量自检并部署
+
+## 7. 本机安装（desktop profile，link 安装）
 
 - [x] profile 里 `dsh-multiline-input` 指向本目录（`link:`），代码改动即时生效；`package.json` 版本变化由 `patchReload: live` reconcile
 - [x] 插件页关 / 开一次 + 刷新页面即可加载新 `client.js`（HMR 忽略 `node_modules`，见 plan 偏差 #6）
 
-## 7. 回滚
+## 8. 回滚
 
 - 插件页关闭 / 卸载，或 `dsh plugin --profile <profile> remove dsh-multiline-input`
 - 代码回滚：`git revert <0.1.1 commit>`；npm 侧如需回退版本，`npm deprecate dsh-multiline-input@0.1.1 "..."` 并发布修正版
