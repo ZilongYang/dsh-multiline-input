@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.1 — 2026-10-29
+
+修复 0.1.0 的 tab 压住输入框上方卡片的问题：[npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub Release](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1)
+
+- tab 提示从 `conversation.input.overlay` 浮层改到 `conversation.input.dock` 座位里的一行（`order: 1000`，紧贴输入卡片上方），占 24px 真实布局：不再覆盖目标条（GoalBar）的文案与暂停 / 编辑 / 清除按钮，也不会被待办、队列、额度横条等卡片撞到。
+- tab 行按运行时读到的 composer 栈 `row-gap` 自适应（dock 6px / hero 8px），底边始终与卡片上沿齐平，外观与 0.1.0 一致（仍是「卡片肩上的 tab」）。
+- 观感变化：输入区比 0.1.0 高约 18px（消息区相应少 18px），composer 上方的 dock 卡片整体上移 24px。
+- 测试：新增「tab 座位必须是 `conversation.input.dock`、且 order 排在全部内置条目之后」的断言。
+
 ## 0.1.0 — 2026-10-28
 
 首个公开发布版本：[npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub Release](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.0) · [市场 PR #9938](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938)（条目校验已过，等仓库满 24h 自动合并门槛）。

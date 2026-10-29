@@ -11,6 +11,13 @@
 - [x] 单元测试（`node --test`）与静态检查
 - [x] 发布：npm 0.1.0、GitHub Release `v0.1.0`、awesome-dsh-plugin PR #9938（等仓库满 24h 自动过门槛）
 
+## 0.1.1（2026-10-29 已发布，布局修复）
+
+- [x] tab 提示从 `conversation.input.overlay` 浮层改到 `conversation.input.dock` 独立一行（`order: 1000`，紧贴卡片上方）：不再压住目标条文案与暂停 / 编辑 / 清除按钮，也不会被以后新增的 composer 卡片覆盖
+- [x] tab 行按运行时读到的栈 `row-gap` 自适应（dock 6px / hero 8px），底边始终与卡片上沿齐平
+- [x] 子龙刷新后确认观感（目标条三个图标完整可见可点、tab 仍在卡片肩上）
+- [x] 发布：版本号 `0.1.1`、CHANGELOG、`npm publish`、GitHub Release `v0.1.1`，清单见 [docs/RELEASE-CHECKLIST-0.1.1.md](docs/RELEASE-CHECKLIST-0.1.1.md)
+
 ## 0.2.0 候选
 
 - [ ] 起始行数可配置（3–5 行），通过 Host `Config` + 插件详情页
@@ -21,6 +28,6 @@
 ## 文档
 
 - 计划：[docs/PLAN-2026-10-27.md](docs/PLAN-2026-10-27.md)
-- 发版清单：[docs/RELEASE-CHECKLIST-0.1.0.md](docs/RELEASE-CHECKLIST-0.1.0.md)
+- 发版清单：[docs/RELEASE-CHECKLIST-0.1.1.md](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - npm：<https://www.npmjs.com/package/dsh-multiline-input>
-- GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.0>
+- GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1>

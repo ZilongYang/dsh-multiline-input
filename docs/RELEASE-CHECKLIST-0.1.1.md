@@ -1,0 +1,58 @@
+# dsh-multiline-input 0.1.1 发版 / 执行检查清单
+
+> 状态（2026-10-29）：0.1.1 为布局修复版（tab 不再压住 composer 上方卡片）。勾选为实测结果，未勾选项注明原因。
+
+## 1. 变更范围
+
+- [x] `client.js`：tab 从 `conversation.input.overlay` 浮层改到 `conversation.input.dock` 一行（`order: 1000`）；行宽按卡片列（`--dsh-composer-card-max-width` / `--dsh-composer-side-clearance`）右对齐；`margin-bottom: -实际 row-gap`（运行时读 `row-gap`，dock 6px / hero 8px，用 `ResizeObserver` 覆盖 hero→dock 切换）让 tab 底边与卡片上沿齐平
+- [x] `client.js`：`__test` 增加 `HINT_SLOT` / `HINT_ID` / `HINT_ORDER`
+- [x] `test/core.test.js`：新增「tab 座位必须是 `conversation.input.dock`、order 排在全部内置 dock 条目之后」的断言（13 条用例）
+- [x] 文档：README（使用 / 实现说明 / 兼容性 / 已知限制 / 源码依据表）、ROADMAP、CHANGELOG、plan 事后补记第 13 条
+
+## 2. 代码与静态检查
+
+- [x] `node --check client.js`
+- [x] `node --check index.js`
+- [x] `npm test`（`node --test`）14 个测试节点全绿（13 条用例 + harness）
+- [x] `locale/zh.json`、`locale/en.json`、`package.json` 可被 JSON 解析
+- [x] `npm pack --dry-run`：tarball 文件清单含 `client.js`、`cordis.patch.yml`、`locale/*`、`assets/*`、`screenshots.json`、README、docs
+- [x] `package.json` 版本 = `0.1.1`，`dsh.compatibility.dsh` = `>=0.2.1-rc.3 <0.3.0-0`
+
+## 3. 布局几何验证（无 GUI，静态复刻）
+
+用 Chrome 无头模式复刻 DSH `0.2.1-rc.3` 的 composer 栈（`.body` / `.scrollBody` / `.composerSeat` / `.composerStack` / InputBar `.root`+`.card` 的真实几何 CSS），插件 CSS 直接从 `client.js` 抽取后注入：
+
+- [x] `tab.bottom - card.top = 0.00px`（tab 底边与卡片上沿齐平）
+- [x] `tab.right - (card.right - (radius + 4)) = 0.00px`（右边缘与 0.1.0 位置一致）
+- [x] 目标条底边在 tab 上方 6px，**无重叠**；目标条三个图标按钮落在 tab 的 x 范围之外
+- [x] 1600 / 1400 两种宽度、栈间距 6px 与 8px（hero）两种情形结论一致
+
+## 4. 实机验收（子龙，2026-10-29）
+
+- [x] 目标条（进行中的目标）文案与暂停 / 编辑 / 清除三个图标完整可见、可点击
+- [x] tab 仍在输入卡片上沿右侧、贴着卡片
+- [x] 输入区比 0.1.0 高约 18px、composer 上方 dock 卡片整体上移 24px（预期变化，子龙确认可接受）
+- [ ] 待办面板 / 队列面板与 tab 的同框观感（本次会话未出现这两种卡片，未专项复核）
+- [ ] `Cmd+E` 切换、多行 `Shift+Enter` 发送（0.1.0 已验证，本次改动未触碰该逻辑，未重跑）
+
+## 5. 发布结果（2026-10-29）
+
+- GitHub：https://github.com/ZilongYang/dsh-multiline-input
+  - tag `v0.1.1`；Release：https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1
+- npm：`dsh-multiline-input@0.1.1`
+  - `npm publish` 成功；`npm view dsh-multiline-input version` = `0.1.1`
+- 市场：首版 PR #9938 已收录，市场读取仓库 + npm，无需重新提 PR；`assets/` 截图沿用 0.1.0（tab 外观与位置未变，仅上方状态行上移 24px，未重截）
+
+## 6. 本机安装（desktop profile，link 安装）
+
+- [x] profile 里 `dsh-multiline-input` 指向本目录（`link:`），代码改动即时生效；`package.json` 版本变化由 `patchReload: live` reconcile
+- [x] 插件页关 / 开一次 + 刷新页面即可加载新 `client.js`（HMR 忽略 `node_modules`，见 plan 偏差 #6）
+
+## 7. 回滚
+
+- 插件页关闭 / 卸载，或 `dsh plugin --profile <profile> remove dsh-multiline-input`
+- 代码回滚：`git revert <0.1.1 commit>`；npm 侧如需回退版本，`npm deprecate dsh-multiline-input@0.1.1 "..."` 并发布修正版
+
+## 备注
+
+- 依赖 DSH `0.2.1-rc.3` 的 composer 栈与布局变量；升级 DSH 后按第 3、4 节回归（tab 与卡片右边缘错位 / 出现缝隙即为变量或栈间距变了）。

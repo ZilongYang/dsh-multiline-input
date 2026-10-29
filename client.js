@@ -6,8 +6,11 @@
  *   - a shortcut command (default Ctrl+E) registered through `ctx.shortcuts`,
  *     so the binding appears in Settings → General → Keyboard shortcuts and
  *     every edit there is validated and persisted by DSH itself;
- *   - a top-right hint inside the composer card (`conversation.input.overlay`),
- *     shown only while the draft is empty;
+ *   - a hint tab riding the composer card's top shoulder, rendered as its own
+ *     row in the composer dock stack (`conversation.input.dock`): the row is in
+ *     flow, so a dock card above the composer (goal bar, todos, queue, cost
+ *     strip) can never be overlapped — the old floating overlay painted over
+ *     them and swallowed their buttons;
  *   - a taller composer floor in multi-line mode, driven by
  *     `<html data-dsh-multiline-input="multi">` and one CSS rule;
  *   - Enter / Shift+Enter swapped in multi-line mode by re-dispatching the
@@ -21,10 +24,15 @@
  *
  * Reference contracts (source checkout, 0.2.1-rc.3):
  *   - packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
+ *   - packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
+ *     (composer stack: `conversation.input.dock` rows above the card)
+ *   - packages/client/ui-conversation/src/client/skeleton/InputBar.module.css
+ *     (`.root` side clearance, `.card` card-width cap)
  *   - packages/client/ui-conversation/src/client/input/editor/DraftEditor.tsx
  *   - packages/client/ui-conversation/src/client/input/editor/keymap.ts
  *   - packages/client/ui-conversation/src/client/contract/input.ts
  *   - packages/client/ui-conversation/src/client/contract/slots.ts
+ *   - packages/extensions/cordis-client-runner/src/client/slot-catalog.ts
  *   - packages/client/shortcuts/src/client/types.ts
  *   - packages/client/modules/README.zh.md
  */
@@ -45,8 +53,14 @@ window.__ModuleLoader__.load({
 
     /** Shortcut command id; dotted form so DSH can persist user overrides. */
     const COMMAND_ID = 'multiline-input.toggle'
-    /** Composer seats: after the slash menu (order 0), above the card content. */
-    const HINT_ORDER = 10
+    /**
+     * The hint lives in the composer dock stack — the in-flow rows directly
+     * above the card (goal 10, queue 20, todos 0, cost strip 5). A high order
+     * keeps the tab last, flush on the card's top shoulder.
+     */
+    const HINT_SLOT = 'conversation.input.dock'
+    const HINT_ID = 'ml-input-hint'
+    const HINT_ORDER = 1000
     /** Multi-line floor in text lines (the requested 3–5 range). */
     const MIN_LINES = 4
 
@@ -87,13 +101,34 @@ window.__ModuleLoader__.load({
     }
 
     const CSS = `
+/* The hint is its own row in the composer dock stack — the in-flow column of
+   strips directly above the input card (goal bar, todos, queue, cost strip).
+   Occupying real layout space is what makes the tab safe: the old version
+   floated in \`conversation.input.overlay\` at \`bottom: 100%\`, painted over
+   whatever DSH docked above the card and swallowed that strip's buttons. */
+.dmi-hint-row {
+  box-sizing: border-box;
+  display: flex;
+  justify-content: flex-end;
+  /* The card's own column: InputBar's root pads by the shared side clearance
+     and the card is capped at the shared card width, centered. The two
+     declarations mirror that so the tab's right edge lands on the card's. */
+  width: min(
+    calc(100% - 2 * var(--dsh-composer-side-clearance, 16px)),
+    var(--dsh-composer-card-max-width, 100%)
+  );
+  margin-inline: auto;
+  /* The stack's row gap would detach the tab from the card's top edge;
+     cancelling it keeps the "tab on the shoulder" seam. The live gap is read
+     in \`MultiLineHint\` (6px docked, 8px in the hero composer) into
+     \`--dmi-stack-gap\`; the fallbacks only cover the first frame. */
+  margin-bottom: calc(-1 * var(--dmi-stack-gap, var(--dsh-composer-stack-gap, 6px)));
+  padding-right: calc(var(--dsw-radius-panel, 16px) + 4px);
+  pointer-events: none;
+}
 /* A small tab riding on the card's top shoulder: same fill as the card, so it
    reads as one piece, with the card's own hairline continuing under it. */
 .dmi-hint {
-  position: absolute;
-  right: calc(var(--dsw-radius-panel) + 4px);
-  bottom: 100%;
-  z-index: 2;
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -354,38 +389,73 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     /**
      * Composer hint on the right shoulder above the card: current shortcut plus
      * the target mode, click to toggle. Always visible, so the binding stays
-     * discoverable while typing.
+     * discoverable while typing. The outer row is the dock-stack slot that
+     * reserves the tab's 24px, so no strip above the card can be covered.
      * @param props - injected stores, dictionary and toggle callback.
-     * @returns the hint element.
+     * @returns the hint row.
      */
     function MultiLineHint({ t, modeStore, shortcutStore, toggle }) {
       const mode = React.useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot, modeStore.getSnapshot)
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
       const action = mode === MODE_MULTI ? t('toSingle') : t('toMulti')
       const meta = mode === MODE_MULTI ? t('submitHint') : null
+      const rowRef = React.useRef(null)
+
+      // Cancel exactly the row gap the composer stack is using, so the tab's
+      // bottom hairline lands on the card's top edge. The docked composer gaps
+      // its rows by 6px and the hero composer by 8px; reading the live value
+      // (instead of trusting one of them) keeps both flush, and the observer
+      // covers a hero -> docked switch that reuses the same row.
+      React.useLayoutEffect(() => {
+        const row = rowRef.current
+        if (row === null) return undefined
+        // The slot outlet's own anchor is `display: contents`; the first flex
+        // ancestor carrying a row gap is the composer stack.
+        let stack = row.parentElement
+        while (stack !== null && !Number.isFinite(Number.parseFloat(window.getComputedStyle(stack).rowGap))) {
+          stack = stack.parentElement
+        }
+        if (stack === null) return undefined
+        const sync = () => {
+          const gap = Number.parseFloat(window.getComputedStyle(stack).rowGap)
+          if (Number.isFinite(gap)) row.style.setProperty('--dmi-stack-gap', `${gap}px`)
+        }
+        sync()
+        if (typeof ResizeObserver !== 'function') return undefined
+        const observer = new ResizeObserver(sync)
+        observer.observe(stack)
+        return () => {
+          observer.disconnect()
+        }
+      }, [])
+
       return h(
         'div',
-        { className: 'dmi-hint' },
+        { ref: rowRef, className: 'dmi-hint-row', 'data-ml-input-hint': '' },
         h(
-          'button',
-          {
-            type: 'button',
-            className: 'dmi-hint-button',
-            title: t('hintTitle'),
-            'aria-label': shortcut === null ? action : t('ariaLabel', { action, keys: shortcut }),
-            onMouseDown: (event) => {
-              event.preventDefault()
+          'div',
+          { className: 'dmi-hint' },
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-hint-button',
+              title: t('hintTitle'),
+              'aria-label': shortcut === null ? action : t('ariaLabel', { action, keys: shortcut }),
+              onMouseDown: (event) => {
+                event.preventDefault()
+              },
+              onClick: (event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                toggle()
+              },
             },
-            onClick: (event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              toggle()
-            },
-          },
-          meta !== null && h('span', { className: 'dmi-hint-meta' }, meta),
-          meta !== null && h('span', { className: 'dmi-hint-sep', 'aria-hidden': true }, '·'),
-          shortcut !== null && h('span', { className: 'dmi-hint-key' }, shortcut),
-          h('span', { className: 'dmi-hint-label' }, action),
+            meta !== null && h('span', { className: 'dmi-hint-meta' }, meta),
+            meta !== null && h('span', { className: 'dmi-hint-sep', 'aria-hidden': true }, '·'),
+            shortcut !== null && h('span', { className: 'dmi-hint-key' }, shortcut),
+            h('span', { className: 'dmi-hint-label' }, action),
+          ),
         ),
       )
     }
@@ -534,9 +604,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         }, 'ml-input: shortcut command')
       })
 
-      ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
-        name: 'conversation.input.overlay',
-        id: 'ml-input-hint',
+      ctx.slots.inject(HINT_SLOT, () => ctx.slots.register({
+        name: HINT_SLOT,
+        id: HINT_ID,
         order: HINT_ORDER,
         locale: NS,
         inject: () => ({ t, modeStore, shortcutStore, toggle }),
@@ -551,6 +621,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
        */
       __test: {
         COMMAND_ID,
+        HINT_SLOT,
+        HINT_ID,
+        HINT_ORDER,
         MODE_ATTRIBUTE,
         MODE_STORAGE_KEY,
         MODE_SINGLE,

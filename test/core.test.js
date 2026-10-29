@@ -158,3 +158,14 @@ test('the newline floor matches the 3-5 line requirement', () => {
   assert.equal(t.MODE_ATTRIBUTE, 'data-dsh-multiline-input')
   assert.equal(t.MODE_STORAGE_KEY, 'dsh-multiline-input.mode.v1')
 })
+
+test('the hint rides the composer dock stack, not the floating overlay seat', () => {
+  // The overlay seat paints above the card and used to cover the goal bar /
+  // todo / queue strips (and swallow their buttons). The dock stack is in
+  // flow, so the hint row reserves the tab's 24px and nothing can be covered.
+  assert.equal(t.HINT_SLOT, 'conversation.input.dock')
+  assert.equal(t.HINT_ID, 'ml-input-hint')
+  // Shipped dock orders: todo 0, cost strip 5, goal 10, queue 20. A higher
+  // order keeps the tab last, flush on the card's top shoulder.
+  assert.ok(t.HINT_ORDER > 20, `HINT_ORDER ${t.HINT_ORDER} must sort after the shipped dock rows`)
+})
