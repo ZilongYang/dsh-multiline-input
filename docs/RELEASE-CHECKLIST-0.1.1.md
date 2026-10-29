@@ -32,16 +32,21 @@
 - [x] 目标条（进行中的目标）文案与暂停 / 编辑 / 清除三个图标完整可见、可点击
 - [x] tab 仍在输入卡片上沿右侧、贴着卡片
 - [x] 输入区比 0.1.0 高约 18px、composer 上方 dock 卡片整体上移 24px（预期变化，子龙确认可接受）
-- [ ] 待办面板 / 队列面板与 tab 的同框观感（本次会话未出现这两种卡片，未专项复核）
+- [ ] 待办面板 / 队列面板与 tab 的同框观感（本次会话未出现这两种卡片，几何模型与目标条一致，未专门造场景复核）
 - [ ] `Cmd+E` 切换、多行 `Shift+Enter` 发送（0.1.0 已验证，本次改动未触碰该逻辑，未重跑）
+- [ ] 截图重截（0.1.0 的两张市场图仍然成立，仅上方状态行位置差 24px）
 
 ## 5. 发布结果（2026-10-29）
 
 - GitHub：https://github.com/ZilongYang/dsh-multiline-input
-  - tag `v0.1.1`；Release：https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1
+  - 提交 `dcbc430`（`fix(composer): keep the hint tab in flow ...`），tag `v0.1.1` 已推送到 origin
+  - Release：https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1（published 2026-10-29T08:20:32Z，非 draft）
 - npm：`dsh-multiline-input@0.1.1`
-  - `npm publish` 成功；`npm view dsh-multiline-input version` = `0.1.1`
-- 市场：首版 PR #9938 已收录，市场读取仓库 + npm，无需重新提 PR；`assets/` 截图沿用 0.1.0（tab 外观与位置未变，仅上方状态行上移 24px，未重截）
+  - `npm publish` 成功（账号 `zlmix`）；registry 处理约 25 秒后可用
+  - `curl https://registry.npmjs.org/dsh-multiline-input/0.1.1` = 200；`dist-tags.latest` = `0.1.1`
+  - 回读 tarball（`dsh-multiline-input-0.1.1.tgz`，259,485 B，sha256 `c57c83df…64db01`）：`package.json` 版本 = 0.1.1，`client.js` 含 3 处 `conversation.input.dock`，`docs/` 含 `RELEASE-CHECKLIST-0.1.1.md`
+- 市场：awesome-dsh-plugin PR #9938 已于 2026-10-28 20:21Z 合并（MERGED）；市场读取仓库 + npm，`latest` 自动指向 0.1.1，无需重提 PR
+- 截图：`assets/` 沿用 0.1.0（tab 外观与位置未变，仅上方状态行上移 24px），未重截
 
 ## 6. 本机安装（desktop profile，link 安装）
 
