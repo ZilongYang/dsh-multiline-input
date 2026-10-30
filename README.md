@@ -11,6 +11,8 @@
 - 默认快捷键 **Cmd+E（macOS）/ Ctrl+E（Windows / Linux）**；输入框上沿有一个与输入框同底色的小 **tab** 显示当前快捷键与目标模式，点击即可切换。
 - 多行模式输入框默认 **4 行高**（3–5 行区间内），内容变多自动长高，到原生 336px 上限后滚动。
 - 多行模式 **Enter 换行、Shift+Enter 发送**；单行模式保持 DSH 原生行为（Enter 发送、Shift+Enter 换行）。
+- 输入框上沿的 tab 可**收起成一条 8px 细线**，把高度让给正文；点击细线随时恢复，收起状态按设备记住。
+- 提交过的文字会记入**设备侧输入历史**：单行模式 `↑` / `↓`、多行模式 `Shift+↑` / `Shift+↓` 回看并替换，`Esc` 还原浏览前草稿；失败/被拒的提交不会入历史。
 - 快捷键可在 **设置 → 通用 → 快捷键**里改成任意组合（冲突校验、恢复默认都由 DSH 官方界面负责）。
 - 模式按设备记住，刷新 / 重启后保持。
 
@@ -53,8 +55,17 @@ pnpm add link:/absolute/path/to/dsh-multiline-input
 | 输入法候选态的 `Enter` | 交给输入法 | 交给输入法 |
 
 - 按 `Cmd+E` / `Ctrl+E`（或点击 tab）在两种模式间循环；切换不清空草稿、不抢焦点。
-- tab **常驻显示**，输入文字时也不隐藏；多行时显示 `Shift+Enter 提交 · Cmd+E 单行输入`，单行时显示 `Cmd+E 多行输入`。
-- tab 是输入框上方**独立的一行**（占 24px）：目标条、待办、队列、额度横条等 DSH 卡片排在它上面，不会被遮住；目标条的暂停 / 编辑 / 清除按钮也能正常点击。
+- tab **默认常驻**，输入文字时也不隐藏；多行时显示 `Shift+Enter 提交 · Cmd+E 单行输入`，单行时显示 `Cmd+E 多行输入`；浏览历史时标签位改为 `历史 n/m`。
+- tab 是输入框上方**独立的一行**：展开态 24px；点击右侧收起按钮变成 8px 细线（仍在流内，输入区回收约 16px），点击细线恢复。无论展开还是收起，目标条、待办、队列、额度横条等 DSH 卡片都排在它上面，不会被遮住。
+- 收起/展开状态按设备持久化（`dsh-multiline-input.hint.v1`）；收起后 `Cmd/Ctrl+E` 仍照常切换。
+
+### 输入历史
+
+- 只记录 **Host 接受**的普通消息；`/` 命令、空提交、失败或被拒绝的提交、超过 16000 字符的单条都不会入历史。
+- 设备侧 `localStorage`（`dsh-multiline-input.history.v1`）全局一份，按最近提交排序，完全相同的文字会去重置顶；上限 200 条 / 10 万字符。
+- 浏览时首次 `↑` 会把当前草稿存起来：`Esc` 或在新条目上再按 `↓` 会还原并退出浏览；直接打字 / 粘贴 / 剪切则退出浏览、保留当前文字；提交后从头开始。
+- **清空入口**：在「设置 → 通用 → 快捷键」搜索「清空输入历史」，给 `multiline-input.clear-history` 绑一个组合即可（默认不占用任何键）。
+- 历史是设备本地明文，可能包含敏感内容；换设备不会同步，多窗口之间也不实时同步。
 
 ## 修改快捷键
 
@@ -80,7 +91,9 @@ tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输�
 
 - **模式状态**：模块级 store + `localStorage['dsh-multiline-input.mode.v1']`，投影为 `<html data-dsh-ml-input="multi">`；
 - **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input][contenteditable="true"]` 设 `min-height: calc(4 * 1lh + 8px)`，不碰 DSH 的滚动上限；
-- **tab 提示**：注册到 `conversation.input.dock` 座位（`order: 1000`，排在 todo 0 / 额度横条 5 / 目标条 10 / 队列 20 之后），成为输入卡片正上方**独立的一行**：整行只有 24px，宽度与卡片同列、tab 右对齐到卡片右边缘；`margin-bottom` 吃掉栈的行距（dock 态 6px、hero 态 8px，运行时按实际 `row-gap` 同步），让 tab 底边与卡片上沿齐平、视觉上仍是「卡片肩上的 tab」，但因为占位而**不可能压到任何上方卡片**。旧实现走 `conversation.input.overlay` 浮层（`bottom: 100%` + `z-index: 2`），会盖住目标条右侧的文案与暂停 / 编辑 / 清除按钮；
+- **tab 提示**：注册到 `conversation.input.dock` 座位（`order: 1000`，排在 todo 0 / 额度横条 5 / 目标条 10 / 队列 20 之后），成为输入卡片正上方**独立的一行**：展开 24px、收起 8px，宽度与卡片同列、tab 右对齐到卡片右边缘；`margin-bottom` 吃掉栈的行距（dock 态 6px、hero 态 8px，运行时按实际 `row-gap` 同步），让 tab 底边与卡片上沿齐平、视觉上仍是「卡片肩上的 tab」，但因为占位而**不可能压到任何上方卡片**；收起态靠同一行 8px 高度 + 抵消行距把输入区回收约 16px。
+- 旧实现走 `conversation.input.overlay` 浮层（`bottom: 100%` + `z-index: 2`），会盖住目标条右侧的文案与暂停 / 编辑 / 清除按钮；
+- **输入历史**：轮询 `useInput(s => s.phase)` / `s.draft` 与 `useSession(s => s.pendingSubmissions)`：`sending` 相位冻结的 draft 就是提交内容，`pendingSubmissions` 出现新 `requestId` 才确认 Host 接受并写入 `localStorage`；浏览时通过公开的 `inputActions.setDraft()` 替换草稿（`setDraft` 会合并进撤销历史），方向键手势仍在 document 捕获阶段接管。
 - **Enter / Shift+Enter**：在 document 捕获阶段拦下多行模式下的 `Enter`，向编辑器重放一个翻转了 `shiftKey` 的合成按键——仍由 DSH 自己的 composer keymap 决定「换行」还是「提交」，撤销历史、输入法保护、busy-enter（queue/steer）、菜单仲裁全部保持原逻辑；
 - **快捷键**：通过 `ctx.shortcuts.register()` 注册命令，编辑与持久化完全交给 DSH。
 
@@ -118,7 +131,7 @@ dsh-multiline-input/
 └── docs/                   # 计划、发版清单
 ```
 
-- 测试：`npm test`（`node --test`，当前 23 条用例）。
+- 测试：`npm test`（`node --test`，当前 24 条用例）。
 - 语法：`node --check client.js && node --check index.js`。
 - 调试：HMR 默认忽略 `**/node_modules`，链接安装的 `client.js` 改动不会被热加载；改完客户端代码后在插件页关/开一次（或重启应用），再刷新页面。
 
@@ -146,7 +159,7 @@ dsh-multiline-input/
 - 多行起始高度是代码常量 4 行，暂不提供配置项（0.2.1 计划改为 Host Config）。
 - 输入历史是设备本地 `localStorage` 明文（全局一份），可能包含敏感内容；用「设置 → 快捷键 → 清空输入历史」清空。多窗口之间不做实时同步。
 - 0.2.0 以 DSH 0.2.1-rc.5 为基线；rc.3 上 `sending` 相位不存在，历史记录不生效（不崩溃），收起与方向键仍可用。
-- tab 行占输入框上方 24px：输入区整体比没有 tab 时高约 18px（24px 行高抵掉 6px 栈间距），消息区相应少 18px。
+- tab 行展开态占输入框上方 24px（输入区比没有 tab 时高约 18px，24px 行高抵掉 6px 栈间距）；收起态 8px（净高约 2px），输入区回收约 16px。
 - hero（空会话）状态下栈行距是 8px，tab 行会按运行时读到的实际 `row-gap` 自适应，视觉上与 dock 态一致。
 - 若默认键位与其它插件的命令默认值冲突，插件会降级为「点击 tab 切换」并在控制台输出一次警告。
 

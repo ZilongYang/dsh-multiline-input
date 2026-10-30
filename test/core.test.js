@@ -286,3 +286,10 @@ test('0.2.0 storage keys, limits, and the clear-history command are stable', () 
   assert.equal(t.HISTORY_MAX_TOTAL_CHARS, 100000)
   assert.equal(t.HISTORY_MAX_ENTRY_CHARS, 16000)
 })
+
+test('advanceCapture ignores a pending echo with no captured draft', () => {
+  const step = t.advanceCapture({ text: null }, { phase: 'plain', draft: '', newPending: true })
+  assert.equal(step.commit, null)
+  assert.equal(step.state.text, null)
+  assert.deepEqual(t.trimHistory([{ text: 'a' }, { text: 'b' }], { entries: 1, totalChars: 100, entryChars: 10 }).map(e => e.text), ['a'])
+})
