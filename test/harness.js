@@ -14,6 +14,7 @@ const reactStub = {
   createElement: (type, props, ...children) => ({ type, props, children }),
   useSyncExternalStore: (subscribe, getSnapshot) => getSnapshot(),
   useRef: (initial) => ({ current: initial }),
+  useState: (initial) => [initial, () => {}],
   useLayoutEffect: () => {},
   useEffect: () => {},
 }

@@ -83,6 +83,9 @@ window.__ModuleLoader__.load({
     const HINT_SLOT = 'conversation.input.dock'
     const HINT_ID = 'ml-input-hint'
     const HINT_ORDER = 1000
+    /** The Plugins page's per-row configuration seat. */
+    const SETTINGS_SLOT = 'plugins.row.config'
+    const SETTINGS_KEY = 'dsh-multiline-input#multiline-input'
     /** Multi-line floor in text lines (the requested 3–5 range). */
     const MIN_LINES = 4
 
@@ -117,6 +120,27 @@ window.__ModuleLoader__.load({
         historyPosition: '历史 {index}/{total}',
         historyTitle: '↑/↓ 浏览输入历史，Esc 还原草稿',
         clearHistoryLabel: '清空输入历史',
+        settingsSummary: '收起提示、输入历史与快捷键',
+        settingsShortcut: '快捷键',
+        settingsShortcutDescription: '在系统设置里修改「切换多行输入」的键位。',
+        settingsShortcutPath: '设置 → 通用 → 快捷键 → 切换多行输入',
+        settingsOpenShortcuts: '打开设置',
+        settingsOpenShortcutsDone: '已打开设置面板，请到「通用 → 快捷键」中修改。',
+        settingsOpenShortcutsFailed: '请手动打开「设置 → 通用 → 快捷键」。',
+        settingsCurrentKeys: '当前键位：{keys}',
+        settingsUnbound: '未绑定',
+        settingsHistory: '输入历史',
+        settingsHistoryEmpty: '还没有记录。',
+        settingsHistoryCount: '已记录 {count} 条（设备本地，最多 200 条）。',
+        settingsClearHistory: '清空输入历史',
+        settingsClearConfirm: '确认清空？',
+        settingsCleared: '已清空。',
+        settingsHint: '提示 tab',
+        settingsHintDescription: '收起后输入区回收约 16px，快捷键不受影响。',
+        settingsCollapseNow: '收起提示',
+        settingsExpandNow: '展开提示',
+        settingsMore: '更多设置',
+        settingsMoreSoon: '起始行数、按会话记忆等将在 0.2.1 提供。',
         ariaLabel: '{action}（{keys}）',
       },
       en: {
@@ -132,6 +156,27 @@ window.__ModuleLoader__.load({
         historyPosition: 'History {index}/{total}',
         historyTitle: '↑/↓ browse input history; Esc restores the draft',
         clearHistoryLabel: 'Clear input history',
+        settingsSummary: 'Collapsible hint, input history, and shortcut',
+        settingsShortcut: 'Shortcut',
+        settingsShortcutDescription: 'Change the “Toggle multiline input” binding in Settings.',
+        settingsShortcutPath: 'Settings → General → Keyboard shortcuts → Toggle multiline input',
+        settingsOpenShortcuts: 'Open Settings',
+        settingsOpenShortcutsDone: 'Settings is open; go to General → Keyboard shortcuts to edit it.',
+        settingsOpenShortcutsFailed: 'Open Settings → General → Keyboard shortcuts manually.',
+        settingsCurrentKeys: 'Current binding: {keys}',
+        settingsUnbound: 'Unbound',
+        settingsHistory: 'Input history',
+        settingsHistoryEmpty: 'Nothing recorded yet.',
+        settingsHistoryCount: '{count} messages recorded (device-local, up to 200).',
+        settingsClearHistory: 'Clear input history',
+        settingsClearConfirm: 'Clear for sure?',
+        settingsCleared: 'Cleared.',
+        settingsHint: 'Hint tab',
+        settingsHintDescription: 'Collapsing gives the composer about 16px back; the shortcut still works.',
+        settingsCollapseNow: 'Collapse hint',
+        settingsExpandNow: 'Show hint',
+        settingsMore: 'More settings',
+        settingsMoreSoon: 'Starting line count and per-session mode are planned for 0.2.1.',
         ariaLabel: '{action} ({keys})',
       },
     }
@@ -296,11 +341,147 @@ window.__ModuleLoader__.load({
 .dmi-hint-line:focus-visible .dmi-hint-chevron {
   opacity: 1;
 }
+/* Plugins page configuration: plain native controls with DSH tokens so the
+   hand-written bundle needs no primitives import. */
+.dmi-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+.dmi-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md, 12px);
+}
+.dmi-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dmi-settings-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.dmi-settings-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.dmi-settings-path {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.dmi-settings-button {
+  align-self: flex-start;
+  margin: 0;
+  padding: 4px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.dmi-settings-button:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dmi-settings-danger {
+  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
+}
+.dmi-settings-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-caption);
+}
 html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
   min-height: calc(${MIN_LINES} * 1lh + 8px);
 }
 @supports not (height: 1lh) {
-  html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
+  /* Plugins page configuration: plain native controls with DSH tokens so the
+   hand-written bundle needs no primitives import. */
+.dmi-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 4px;
+}
+.dmi-settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md, 12px);
+}
+.dmi-settings-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.dmi-settings-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dsw-alias-label-primary);
+}
+.dmi-settings-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-tertiary);
+}
+.dmi-settings-path {
+  margin: 0;
+  padding: 4px 8px;
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+.dmi-settings-button {
+  align-self: flex-start;
+  margin: 0;
+  padding: 4px 10px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: var(--dsw-radius-sm, 6px);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
+  font-size: 12px;
+  line-height: 18px;
+  cursor: pointer;
+}
+.dmi-settings-button:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.dmi-settings-danger {
+  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
+}
+.dmi-settings-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-caption);
+}
+html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
     min-height: ${MIN_LINES * 24 + 8}px;
   }
 }
@@ -1111,6 +1292,121 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
 
     //#endregion
 
+    //#region Plugins page configuration
+
+    /**
+     * Best-effort open of the settings panel: DSH exposes no public
+     * "open section" API, so this clicks the sidebar trigger when it can find
+     * it and otherwise reports failure (the page always shows the path too).
+     * @returns whether a settings trigger was clicked.
+     */
+    function openSettingsPanel() {
+      try {
+        const buttons = [...document.querySelectorAll('button[aria-haspopup="dialog"]')]
+        const outside = buttons.filter((button) => button.closest('[role="dialog"]') === null)
+        const target = outside.find((button) => /Comma/u.test(button.getAttribute('aria-keyshortcuts') ?? '')) ?? outside[0]
+        if (target === undefined) return false
+        if (target.getAttribute('aria-expanded') === 'true') return true
+        target.click()
+        return true
+      } catch {
+        return false
+      }
+    }
+
+    /**
+     * Render the plugin's configuration page on the Plugins detail view.
+     * @param props - owner view, dictionary, stores, and write actions.
+     * @returns the summary line or the settings sections.
+     */
+    function MultiLineSettings({ view, t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+      const entries = React.useSyncExternalStore(historyStore.subscribe, historyStore.getSnapshot, historyStore.getSnapshot)
+      const collapsed = isCollapsed(React.useSyncExternalStore(hintStore.subscribe, hintStore.getSnapshot, hintStore.getSnapshot))
+      const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
+      const [opened, setOpened] = React.useState(null)
+      const [confirming, setConfirming] = React.useState(false)
+      const [cleared, setCleared] = React.useState(false)
+      if (view === 'summary') return t('settingsSummary')
+      const keys = shortcut === null ? t('settingsUnbound') : shortcut
+      const count = entries.length
+      return h(
+        'div',
+        { className: 'dmi-settings', 'data-ml-input-settings': '' },
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsShortcut'))),
+          h('p', { className: 'dmi-settings-desc' }, t('settingsShortcutDescription')),
+          h('p', { className: 'dmi-settings-path' }, t('settingsShortcutPath')),
+          h('p', { className: 'dmi-settings-desc' }, t('settingsCurrentKeys', { keys })),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-settings-button',
+              onClick: () => {
+                const ok = openSettingsPanel()
+                setOpened(ok ? 'ok' : 'failed')
+              },
+            },
+            t('settingsOpenShortcuts'),
+          ),
+          opened === 'ok' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsDone')),
+          opened === 'failed' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsFailed')),
+        ),
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsHistory'))),
+          h('p', { className: 'dmi-settings-desc' }, count === 0 ? t('settingsHistoryEmpty') : t('settingsHistoryCount', { count })),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-settings-button dmi-settings-danger',
+              onClick: () => {
+                if (confirming) {
+                  clearHistory()
+                  setConfirming(false)
+                  setCleared(true)
+                } else {
+                  setConfirming(true)
+                  setCleared(false)
+                }
+              },
+            },
+            confirming ? t('settingsClearConfirm') : t('settingsClearHistory'),
+          ),
+          cleared && h('p', { className: 'dmi-settings-note' }, t('settingsCleared')),
+        ),
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsHint'))),
+          h('p', { className: 'dmi-settings-desc' }, t('settingsHintDescription')),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-settings-button',
+              onClick: () => {
+                setCollapsed(!collapsed)
+              },
+            },
+            collapsed ? t('settingsExpandNow') : t('settingsCollapseNow'),
+          ),
+        ),
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsMore'))),
+          h('p', { className: 'dmi-settings-desc' }, t('settingsMoreSoon')),
+        ),
+      )
+    }
+
+    //#endregion
+
     /**
      * Register the dictionaries, styles, stores, keyboard takeover, shortcut
      * commands and the composer hint.
@@ -1289,6 +1585,13 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         locale: NS,
         inject: () => ({ t, modeStore, shortcutStore, toggle }),
       }, MultiLineHint))
+
+      ctx.slots.inject(SETTINGS_SLOT, () => ctx.slots.register({
+        name: SETTINGS_SLOT,
+        key: SETTINGS_KEY,
+        locale: NS,
+        inject: () => ({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }),
+      }, MultiLineSettings))
     }
 
     return {
@@ -1300,6 +1603,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       __test: {
         COMMAND_ID,
         CLEAR_HISTORY_COMMAND_ID,
+        SETTINGS_SLOT,
+        SETTINGS_KEY,
         HINT_SLOT,
         HINT_ID,
         HINT_ORDER,
@@ -1319,6 +1624,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         MIN_LINES,
         DEFAULTS,
         MultiLineHint,
+        MultiLineSettings,
+        openSettingsPanel,
         hintStore,
         setCollapsed,
         historyStore,

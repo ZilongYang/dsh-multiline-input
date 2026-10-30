@@ -367,3 +367,25 @@ test('cleanHistoryText and removeHistory support optimistic record and rollback'
   assert.deepEqual(t.removeHistory(entries, 'b'), [{ text: 'a', at: 1 }])
   assert.equal(t.removeHistory(entries, 'z'), entries)
 })
+
+test('the Plugins page configuration renders the summary and sections', () => {
+  const store = (value) => ({ getSnapshot: () => value, subscribe: () => () => {} })
+  const t = (key, params) => (params === undefined ? key : `${key} ${JSON.stringify(params)}`)
+  const props = {
+    t,
+    historyStore: store([{ text: 'a', at: 1 }]),
+    hintStore: store('expanded'),
+    shortcutStore: store('Cmd+E'),
+    clearHistory: () => {},
+    setCollapsed: () => {},
+  }
+  assert.equal(t.MultiLineSettings({ ...props, view: 'summary' }), 'settingsSummary')
+  const tree = t.MultiLineSettings({ ...props, view: 'page' })
+  assert.equal(tree.props.className, 'dmi-settings')
+  assert.equal(tree.children.length, 4)
+  assert.equal(tree.children[0].props.className, 'dmi-settings-section')
+  assert.equal(tree.children[0].children[0].children[0].props.className, 'dmi-settings-title')
+  assert.equal(t.SETTINGS_SLOT, 'plugins.row.config')
+  assert.equal(t.SETTINGS_KEY, 'dsh-multiline-input#multiline-input')
+  assert.equal(t.openSettingsPanel(), false)
+})
