@@ -837,12 +837,14 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
               tentativeRef.current.set(item.requestId, lastDraftRef.current)
             }
           }
-          for (const id of removed) {
-            const text = tentativeRef.current.get(id)
-            if (text === undefined) continue
-            tentativeRef.current.delete(id)
-            if (submissionSurvived(draft, text)) recordHistoryEntry(text)
-          }
+        }
+        // Settlement is independent of the precise path: an optimistic echo
+        // captured before a build exposes `sending` must still settle.
+        for (const id of removed) {
+          const text = tentativeRef.current.get(id)
+          if (text === undefined) continue
+          tentativeRef.current.delete(id)
+          if (submissionSurvived(draft, text)) recordHistoryEntry(text)
         }
         if (phase === 'sending') {
           browseStore.set({ active: false, index: 0, saved: '' })
