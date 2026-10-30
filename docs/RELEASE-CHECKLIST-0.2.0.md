@@ -42,7 +42,7 @@
 - [x] tag `v0.2.0` 推送（annotated，指向 `83c4e24`）
 - [x] `npm publish`（账号 `zlmix`）成功：shasum `08691e5b83abf4ab66ff0bd3ddcdaee04775e520`、20 files、unpacked 391 KB；registry `latest` 已显示 0.2.0
 - [x] GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.0>（published，非 draft），notes 取自 CHANGELOG 0.2.0
-- [ ] tarball 回读：registry 元数据 200、`dist.tarball` 已指向 0.2.0，但 CDN 仍在 404 传播中；稍后复验
+- [x] tarball 回读：`npm pack dsh-multiline-input@0.2.0` 成功（shasum `08691e5b…` 与发布一致，20 files）；解包 `client.js` 含 `dmi-hint-line` / `pendingSubmissions` / `plugins.row.config`，`package.json` = 0.2.0。注：直接 curl registry CDN 的 tarball URL 仍返回 404，`npm pack` 正常解析
 - 注：npm 包内 CHANGELOG 仍含发布前措辞「本轮不发布 npm / GitHub / 官网」；仓库版已由 `62fc0f6` 修正，未重发 npm（仅文档差异）
 
 ## 5. 官网同步（dsh.zlmix.com，2026-10-30）
