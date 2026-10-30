@@ -38,27 +38,31 @@
 
 ## 4. 发布结果（2026-10-30）
 
-- [ ] 合并 `0.2.0开发` → `main`，推送 origin
-- [ ] tag `v0.2.0` 推送
-- [ ] `npm publish`（账号 `zlmix`）成功；registry 回读 0.2.0
-- [ ] GitHub Release `v0.2.0` 创建（非 draft）
-- [ ] npm tarball 回读：版本 0.2.0、`client.js` 含历史/收起/配置页代码
+- [x] 合并 `0.2.0开发` → `main`（fast-forward `0e65f74..83c4e24`）并推送 origin；随后补了 CHANGELOG 措辞修正提交 `62fc0f6`
+- [x] tag `v0.2.0` 推送（annotated，指向 `83c4e24`）
+- [x] `npm publish`（账号 `zlmix`）成功：shasum `08691e5b83abf4ab66ff0bd3ddcdaee04775e520`、20 files、unpacked 391 KB；registry `latest` 已显示 0.2.0
+- [x] GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.0>（published，非 draft），notes 取自 CHANGELOG 0.2.0
+- [ ] tarball 回读：registry 元数据 200、`dist.tarball` 已指向 0.2.0，但 CDN 仍在 404 传播中；稍后复验
+- 注：npm 包内 CHANGELOG 仍含发布前措辞「本轮不发布 npm / GitHub / 官网」；仓库版已由 `62fc0f6` 修正，未重发 npm（仅文档差异）
 
-## 5. 官网同步（dsh.zlmix.com）
+## 5. 官网同步（dsh.zlmix.com，2026-10-30）
 
-- [ ] `data/plugins.json`：multiline-input `version` → 0.2.0、`released` → 2026-10-30、`dsh` / `tested` → 0.2.1-rc.5、`site.updated` → 2026-10-30
-- [ ] `multiline-input/index.html`：JSON-LD `softwareVersion`、hero `data-version`、`pkg-line`、版本 chip → 0.2.0；能力描述补「可收起 / 输入历史 / 设置页」
-- [ ] `index.html`：插件卡 `data-version` / 版本 chip、JSON-LD `softwareVersion` → 0.2.0
-- [ ] `assets/icons/multiline-input.svg`：同步新图标
-- [ ] `sitemap.xml`：首页与 `/multiline-input/` 的 `lastmod` → 2026-10-30
-- [ ] `node scripts/check-site.mjs` 通过（必要时用 `CHECK_SITE_SKIP_CROSS` 跳过邻居仓库中途版本，并在清单记录原因）
-- [ ] `./scripts/deploy.sh` 部署并回读线上版本 / 图标 / lastmod
+- [x] `data/plugins.json`：multiline-input `version` → 0.2.0、`released` → 2026-10-30、`dsh` / `tested` → `0.2.1-rc.5`、`site.updated` → 2026-10-30
+- [x] `multiline-input/index.html`：JSON-LD `softwareVersion`、hero `data-version`、`pkg-line`、chip → 0.2.0；新增 0.2.0 功能卡（可收起 tab / 输入历史 / 设置页）、键位表补 `↑/↓` 与 `Esc`、兼容表更新到 rc.5 并新增「0.2.0 起」行、FAQ 补设置页入口
+- [x] `index.html`：插件卡 `data-version` / chip、JSON-LD `softwareVersion` → 0.2.0；DSH 声明 → `≥0.2.1-rc.5`
+- [x] `assets/icons/multiline-input.svg`：同步蓝底新图标
+- [x] `sitemap.xml`：首页与 `/multiline-input/` 的 `lastmod` → 2026-10-30
+- [x] 站点提交 `88a6c7b`（本地仓，无远端）
+- [x] 自检：`CHECK_SITE_SKIP_CROSS=dsh-session-titler node scripts/check-site.mjs` → **0 error / 1 warning**。跳过原因：邻居 `dsh-session-titler` 站点 0.2.1 / package.json 0.2.2（另一条发布流水线），与本次无关
+- [x] 部署：`CHECK_SITE_SKIP_CROSS=dsh-session-titler ./scripts/deploy.sh` → 备份 `/opt/1panel/www/sites/dsh.zlmix.com/backups/20261030-232221`，8 条路由 200
+- [x] 线上回读：`/multiline-input/` 的 JSON-LD / `data-version` / `pkg-line` / chip = 0.2.0；图标含 `#4176E6`；首页 JSON-LD / 卡片 = 0.2.0；`sitemap.xml` lastmod = 2026-10-30
+- [ ] 截图：`assets/shots/` 仍是 0.1.x 市场图（细线、历史、设置页均未入图），待重截后单独提交
 
 ## 6. 本机安装（desktop profile）
 
-- [x] 开发期临时 `link:` 到 worktree（已备份 profile 清单）
-- [ ] 合并后恢复为 `link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input`（或 npm 0.2.0），插件页关/开 + 刷新
-- [ ] 应用内版本显示 0.2.0，tab / 历史 / 设置页正常
+- [x] 开发期临时 `link:` 到 worktree（备份：`package.json.bak-0.2.0-link-20261030-203638` / `pnpm-lock.yaml.bak-20261030-203638`）
+- [x] 合并后恢复 `link:/Users/zilong/zWork/ai/zl-plugins/dsh-ml-input`，pnpm 回装，`node_modules` 版本 0.2.0
+- [ ] 应用内插件页关/开一次 + 刷新后确认版本 0.2.0、tab / 历史 / 设置页正常（待子龙）
 
 ## 7. 回滚
 
