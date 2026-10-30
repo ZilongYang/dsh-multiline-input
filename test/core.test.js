@@ -357,3 +357,13 @@ test('submissionSurvived distinguishes acceptance from a restored failed draft',
   assert.equal(t.submissionSurvived('  hello  ', 'hello'), false)
   assert.equal(t.submissionSurvived('', ''), false)
 })
+
+test('cleanHistoryText and removeHistory support optimistic record and rollback', () => {
+  assert.equal(t.cleanHistoryText('  hi  '), 'hi')
+  assert.equal(t.cleanHistoryText('   '), null)
+  assert.equal(t.cleanHistoryText('/help'), null)
+  assert.equal(t.cleanHistoryText('x'.repeat(t.HISTORY_MAX_ENTRY_CHARS + 1)), null)
+  const entries = [{ text: 'a', at: 1 }, { text: 'b', at: 2 }]
+  assert.deepEqual(t.removeHistory(entries, 'b'), [{ text: 'a', at: 1 }])
+  assert.equal(t.removeHistory(entries, 'z'), entries)
+})

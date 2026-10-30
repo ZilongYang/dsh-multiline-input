@@ -477,19 +477,44 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     }
 
     /**
-     * Record one accepted submission at the head of the history.
+     * Normalize a submitted draft into a history text, or reject it.
+     * @param text - submitted draft projection.
+     * @param limits - budgets to enforce.
+     * @returns the cleaned text, or null when it must not be recorded.
+     */
+    function cleanHistoryText(text, limits = HISTORY_LIMITS) {
+      if (typeof text !== 'string') return null
+      const clean = text.trim()
+      if (clean === '' || clean.startsWith('/') || clean.length > limits.entryChars) return null
+      return clean
+    }
+
+    /**
+     * Record one submission at the head of the history.
      * @param entries - current history, newest first.
      * @param text - submitted draft projection.
-     * @param at - acceptance timestamp.
+     * @param at - submission timestamp.
      * @param limits - budgets to enforce.
      * @returns the next history (the same reference when nothing was recorded).
      */
     function recordHistory(entries, text, at = Date.now(), limits = HISTORY_LIMITS) {
-      if (typeof text !== 'string') return entries
-      const clean = text.trim()
-      if (clean === '' || clean.startsWith('/') || clean.length > limits.entryChars) return entries
+      const clean = cleanHistoryText(text, limits)
+      if (clean === null) return entries
       const rest = entries.filter((entry) => entry.text !== clean)
       return trimHistory([{ text: clean, at }, ...rest], limits)
+    }
+
+    /**
+     * Drop one text from the history (a rejected submission's rollback).
+     * @param entries - current history, newest first.
+     * @param text - text to remove.
+     * @returns the next history (the same reference when nothing matched).
+     */
+    function removeHistory(entries, text) {
+      const clean = cleanHistoryText(text)
+      if (clean === null) return entries
+      const next = entries.filter((entry) => entry.text !== clean)
+      return next.length === entries.length ? entries : next
     }
 
     /**
@@ -759,6 +784,18 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       writeHistory(localStore(), next)
     }
 
+    /**
+     * Withdraw one optimistically recorded submission after a rejected send.
+     * @param text - the text recorded for that echo.
+     */
+    function dropHistoryEntry(text) {
+      const current = historyStore.getSnapshot()
+      const next = removeHistory(current, text)
+      if (next === current) return
+      historyStore.set(next)
+      writeHistory(localStore(), next)
+    }
+
     /** Drop the whole input history and leave browsing. */
     function clearHistory() {
       historyStore.set([])
@@ -869,18 +906,21 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             for (const item of added) {
               if (typeof item.text !== 'string' || item.text.trim() === '') continue
               if (tentativeRef.current.has(item.requestId)) continue
-              if (lastDraftRef.current.trim() === '') continue
-              tentativeRef.current.set(item.requestId, lastDraftRef.current)
+              const text = cleanHistoryText(lastDraftRef.current)
+              if (text === null) continue
+              const existed = historyStore.getSnapshot().some((entry) => entry.text === text)
+              recordHistoryEntry(text)
+              tentativeRef.current.set(item.requestId, { text, fresh: !existed })
             }
           }
         }
         // Settlement is independent of the precise path: an optimistic echo
         // captured before a build exposes `sending` must still settle.
         for (const id of removed) {
-          const text = tentativeRef.current.get(id)
-          if (text === undefined) continue
+          const captured = tentativeRef.current.get(id)
+          if (captured === undefined) continue
           tentativeRef.current.delete(id)
-          if (submissionSurvived(draft, text)) recordHistoryEntry(text)
+          if (!submissionSurvived(draft, captured.text) && captured.fresh) dropHistoryEntry(captured.text)
         }
         if (phase === 'sending') {
           browseStore.set({ active: false, index: 0, saved: '' })
@@ -1296,7 +1336,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         sanitizeHistoryEntry,
         sanitizeHistory,
         trimHistory,
+        cleanHistoryText,
         recordHistory,
+        removeHistory,
         readHistory,
         writeHistory,
         advanceCapture,
