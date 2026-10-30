@@ -498,11 +498,16 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     function advanceCapture(state, observation) {
       const phase = observation?.phase
       const draft = typeof observation?.draft === 'string' ? observation.draft : ''
-      const text = state === null || state === undefined || typeof state.text !== 'string' ? null : state.text
-      if (text !== null && observation?.newPending === true) return { state: { text: null }, commit: text }
-      if (phase !== 'sending') return { state: { text }, commit: null }
-      if (text === null || draft !== text) return { state: { text: draft }, commit: null }
-      return { state: { text }, commit: null }
+      let text = state === null || state === undefined || typeof state.text !== 'string' ? null : state.text
+      let commit = null
+      // Acceptance first: the Host may accept one message as the next sending
+      // starts, so both transitions can land in a single observation.
+      if (text !== null && observation?.newPending === true) {
+        commit = text
+        text = null
+      }
+      if (phase === 'sending' && (text === null || draft !== text)) text = draft
+      return { state: { text }, commit }
     }
 
     /**

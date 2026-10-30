@@ -9,7 +9,7 @@
 - **↑ / ↓ 浏览输入历史**：单行 `↑` / `↓`，多行 `Shift+↑` / `Shift+↓`；首次 `↑` 保存当前草稿，`Esc` 或在新条目上再按 `↓` 还原；浏览时 tab 显示「历史 n/m」；替换走公开的 `inputActions.setDraft`，不直接改 DOM。
 - **清空历史命令**：新增未绑定默认键的 `multiline-input.clear-history`，在「设置 → 通用 → 快捷键」自行指定组合。
 - **DSH 0.2.1-rc.5 兼容回归**：核对 composer 锚点 / dock 座位 / 布局变量 / Shortcuts 契约，`sending` 相位不拦截；兼容范围改为 `>=0.2.1-rc.5 <0.3.0-0`。
-- 测试：`node --test` 24 条全绿（新增历史、浏览、收起、sending 相位用例）。
+- 测试：`node --test` 25 条全绿（新增历史、浏览、收起、sending 相位用例）。
 
 ## 0.1.1 — 2026-10-29
 

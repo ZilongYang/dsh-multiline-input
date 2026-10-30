@@ -293,3 +293,9 @@ test('advanceCapture ignores a pending echo with no captured draft', () => {
   assert.equal(step.state.text, null)
   assert.deepEqual(t.trimHistory([{ text: 'a' }, { text: 'b' }], { entries: 1, totalChars: 100, entryChars: 10 }).map(e => e.text), ['a'])
 })
+
+test('advanceCapture can commit one accepted draft and capture the next in one step', () => {
+  const step = t.advanceCapture({ text: 'first' }, { phase: 'sending', draft: 'second', newPending: true })
+  assert.equal(step.commit, 'first')
+  assert.equal(step.state.text, 'second')
+})
