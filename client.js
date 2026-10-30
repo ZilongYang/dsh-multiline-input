@@ -1325,7 +1325,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
      * @param props - owner view, dictionary, stores, and write actions.
      * @returns the summary line or the settings sections.
      */
-    function MultiLineSettingsBody({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+    function MultiLineSettingsBody({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed, showOpenButton = true }) {
       const entries = React.useSyncExternalStore(historyStore.subscribe, historyStore.getSnapshot, historyStore.getSnapshot)
       const collapsed = isCollapsed(React.useSyncExternalStore(hintStore.subscribe, hintStore.getSnapshot, hintStore.getSnapshot))
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
@@ -1344,7 +1344,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
           h('p', { className: 'dmi-settings-desc' }, t('settingsShortcutDescription')),
           h('p', { className: 'dmi-settings-path' }, t('settingsShortcutPath')),
           h('p', { className: 'dmi-settings-desc' }, t('settingsCurrentKeys', { keys })),
-          h(
+          showOpenButton && h(
             'button',
             {
               type: 'button',
@@ -1356,8 +1356,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             },
             t('settingsOpenShortcuts'),
           ),
-          opened === 'ok' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsDone')),
-          opened === 'failed' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsFailed')),
+          showOpenButton && opened === 'ok' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsDone')),
+          showOpenButton && opened === 'failed' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsFailed')),
         ),
         h(
           'section',
@@ -1426,7 +1426,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
      * @returns the shared settings body.
      */
     function MultiLineSettingsSection({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
-      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed })
+      // Already inside Settings: the path text guides to General → Shortcuts,
+      // and an "open Settings" button would be a no-op here.
+      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed, showOpenButton: false })
     }
 
     //#endregion
