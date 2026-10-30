@@ -350,22 +350,11 @@ test('MultiLineHint shows the history position while browsing', () => {
   t.browseStore.set({ active: false, index: 0, saved: '' })
 })
 
-test('submissionSurvived distinguishes acceptance from a restored failed draft', () => {
-  assert.equal(t.submissionSurvived('', 'hello'), true)
-  assert.equal(t.submissionSurvived('later typing', 'hello'), true)
-  assert.equal(t.submissionSurvived('hello', 'hello'), false)
-  assert.equal(t.submissionSurvived('  hello  ', 'hello'), false)
-  assert.equal(t.submissionSurvived('', ''), false)
-})
-
-test('cleanHistoryText and removeHistory support optimistic record and rollback', () => {
+test('cleanHistoryText rejects commands, empties, and oversized drafts', () => {
   assert.equal(t.cleanHistoryText('  hi  '), 'hi')
   assert.equal(t.cleanHistoryText('   '), null)
   assert.equal(t.cleanHistoryText('/help'), null)
   assert.equal(t.cleanHistoryText('x'.repeat(t.HISTORY_MAX_ENTRY_CHARS + 1)), null)
-  const entries = [{ text: 'a', at: 1 }, { text: 'b', at: 2 }]
-  assert.deepEqual(t.removeHistory(entries, 'b'), [{ text: 'a', at: 1 }])
-  assert.equal(t.removeHistory(entries, 'z'), entries)
 })
 
 test('the Plugins page configuration renders the summary and sections', () => {
@@ -387,7 +376,7 @@ test('the Plugins page configuration renders the summary and sections', () => {
   assert.equal(t.SETTINGS_SECTION_SLOT, 'settings.section')
   assert.equal(t.SETTINGS_SECTION_ID, 'multiline-input')
   assert.ok(t.SETTINGS_SECTION_ORDER > 20)
-  assert.equal(tree.children.length, 4)
+  assert.equal(tree.children.length, 3)
   assert.equal(tree.children[0].props.className, 'dmi-settings-section')
   assert.equal(tree.children[0].children[0].children[0].props.className, 'dmi-settings-title')
   assert.equal(t.SETTINGS_SLOT, 'plugins.row.config')

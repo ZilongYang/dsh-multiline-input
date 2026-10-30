@@ -144,8 +144,6 @@ window.__ModuleLoader__.load({
         settingsHintDescription: '收起后输入区回收约 16px，快捷键不受影响。',
         settingsCollapseNow: '收起提示',
         settingsExpandNow: '展开提示',
-        settingsMore: '更多设置',
-        settingsMoreSoon: '起始行数、按会话记忆等将在 0.2.1 提供。',
         ariaLabel: '{action}（{keys}）',
       },
       en: {
@@ -181,8 +179,6 @@ window.__ModuleLoader__.load({
         settingsHintDescription: 'Collapsing gives the composer about 16px back; the shortcut still works.',
         settingsCollapseNow: 'Collapse hint',
         settingsExpandNow: 'Show hint',
-        settingsMore: 'More settings',
-        settingsMoreSoon: 'Starting line count and per-session mode are planned for 0.2.1.',
         ariaLabel: '{action} ({keys})',
       },
     }
@@ -692,19 +688,6 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     }
 
     /**
-     * Drop one text from the history (a rejected submission's rollback).
-     * @param entries - current history, newest first.
-     * @param text - text to remove.
-     * @returns the next history (the same reference when nothing matched).
-     */
-    function removeHistory(entries, text) {
-      const clean = cleanHistoryText(text)
-      if (clean === null) return entries
-      const next = entries.filter((entry) => entry.text !== clean)
-      return next.length === entries.length ? entries : next
-    }
-
-    /**
      * Read the device history; unreadable storage degrades to empty.
      * @param store - `localStorage`-like object, or undefined.
      * @returns clean entries.
@@ -777,21 +760,6 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       if (multi ? shiftKey !== true : shiftKey === true) return null
       if (up) return 'older'
       return browsing === true ? 'newer' : null
-    }
-
-    /**
-     * Decide whether an optimistic submission echo was accepted rather than
-     * restored after failure. rc.5 clears the draft on submit and puts the
-     * failed draft back, so a matching draft at retirement means failure.
-     * @param draft - draft at the echo's retirement.
-     * @param text - draft captured when the echo appeared.
-     * @returns whether the submission should enter the history.
-     */
-    function submissionSurvived(draft, text) {
-      const current = typeof draft === 'string' ? draft.trim() : ''
-      const sent = typeof text === 'string' ? text.trim() : ''
-      if (sent === '') return false
-      return current !== sent
     }
 
     /**
@@ -971,18 +939,6 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       writeHistory(localStore(), next)
     }
 
-    /**
-     * Withdraw one optimistically recorded submission after a rejected send.
-     * @param text - the text recorded for that echo.
-     */
-    function dropHistoryEntry(text) {
-      const current = historyStore.getSnapshot()
-      const next = removeHistory(current, text)
-      if (next === current) return
-      historyStore.set(next)
-      writeHistory(localStore(), next)
-    }
-
     /** Drop the whole input history and leave browsing. */
     function clearHistory() {
       historyStore.set([])
@@ -1028,8 +984,6 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       const seenPendingRef = React.useRef(null)
       /** Last non-empty plain draft: rc.5 has no `sending` freeze, so the echo appears at submit. */
       const lastDraftRef = React.useRef('')
-      /** Optimistic rc.5 echoes waiting for retirement, keyed by request id; committed unless the draft came back. */
-      const tentativeRef = React.useRef(new Map())
       /** Whether this DSH build ever exposed the frozen `sending` phase (0.2.2+). */
       const sendingSeenRef = React.useRef(phase === 'sending')
 
@@ -1082,32 +1036,17 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         if (previous === null) return
         if (phase === 'sending') sendingSeenRef.current = true
         const added = list.filter((item) => item !== null && item !== undefined && !previous.has(item.requestId))
-        const removed = [...previous].filter((id) => !current.has(id))
         const next = advanceCapture(captureRef.current, { phase, draft, newPending: added.length > 0 })
         captureRef.current = next.state
         if (next.commit !== null) recordHistoryEntry(next.commit)
-        if (!sendingSeenRef.current) {
-          // Queued / steering echoes can stay pending for a long time and several
-          // can be in flight, so each request id keeps its own captured draft.
-          if (captureRef.current.text === null) {
-            for (const item of added) {
-              if (typeof item.text !== 'string' || item.text.trim() === '') continue
-              if (tentativeRef.current.has(item.requestId)) continue
-              const text = cleanHistoryText(lastDraftRef.current)
-              if (text === null) continue
-              const existed = historyStore.getSnapshot().some((entry) => entry.text === text)
-              recordHistoryEntry(text)
-              tentativeRef.current.set(item.requestId, { text, fresh: !existed })
-            }
+        if (!sendingSeenRef.current && captureRef.current.text === null) {
+          // rc.5 echoes at submit. Record each one immediately so ordinary,
+          // queued, steering, and even rejected submissions stay recallable.
+          for (const item of added) {
+            if (typeof item.text !== 'string' || item.text.trim() === '') continue
+            const text = cleanHistoryText(lastDraftRef.current)
+            if (text !== null) recordHistoryEntry(text)
           }
-        }
-        // Settlement is independent of the precise path: an optimistic echo
-        // captured before a build exposes `sending` must still settle.
-        for (const id of removed) {
-          const captured = tentativeRef.current.get(id)
-          if (captured === undefined) continue
-          tentativeRef.current.delete(id)
-          if (!submissionSurvived(draft, captured.text) && captured.fresh) dropHistoryEntry(captured.text)
         }
         if (phase === 'sending') {
           browseStore.set({ active: false, index: 0, saved: '' })
@@ -1401,12 +1340,6 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             collapsed ? t('settingsExpandNow') : t('settingsCollapseNow'),
           ),
         ),
-        h(
-          'section',
-          { className: 'dmi-settings-section' },
-          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsMore'))),
-          h('p', { className: 'dmi-settings-desc' }, t('settingsMoreSoon')),
-        ),
       )
     }
 
@@ -1685,11 +1618,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         trimHistory,
         cleanHistoryText,
         recordHistory,
-        removeHistory,
         readHistory,
         writeHistory,
         advanceCapture,
-        submissionSurvived,
         resolveBrowseIntent,
         nextBrowseIndex,
         formatShortcut,
