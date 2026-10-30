@@ -18,6 +18,12 @@
 
 ![多行模式：输入框变高，tab 显示 Shift+Enter 提交 · Cmd+E 单行输入](assets/screenshot-2-multiline.png)
 
+![收起后输入区上沿的细线](assets/screenshot-3-collapsed.png)
+
+![↑/↓ 浏览输入历史，tab 显示「历史 2/3」](assets/screenshot-4-history.png)
+
+![设置（Cmd+,）→ 多行输入](assets/screenshot-5-settings.png)
+
 ## 安装
 
 ```sh

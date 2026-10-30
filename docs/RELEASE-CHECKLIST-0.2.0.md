@@ -34,7 +34,7 @@
 - [x] 0.1.1 回归：多行 Enter/Shift+Enter、`Cmd+Enter`、撤销、模式持久化、dock 卡片不被遮挡、hero 状态
 - [ ] 队列 / steer 消息「发完立即 `↑` 可见」（实现已改，未单独造忙碌场景复核）
 - [ ] Console 无 `dsh-multiline-input` 报错 / 禁用启用后历史仍在（子龙未专门查看，属可选）
-- [ ] 市场截图更新（0.2.0 外观有变化：细线、历史、设置页）
+- [x] 截图：重截 5 张（单行 / 多行 / 收起细线 / 历史浏览 / 设置页），更新 `screenshots.json`、README 与官网 `assets/shots/`；用 ego lite 打开真实 Web GUI 拍摄并恢复默认外观
 
 ## 4. 发布结果（2026-10-30）
 
