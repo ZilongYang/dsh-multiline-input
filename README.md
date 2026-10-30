@@ -20,7 +20,7 @@
 
 ![收起后输入区上沿的细线](assets/screenshot-3-collapsed.png)
 
-![多行模式下收起，仍保留 4 行高度](assets/screenshot-4-collapsed-multiline.png)
+![多行草稿下收起提示，正文仍保留完整高度](assets/screenshot-4-collapsed-multiline.png)
 
 ![设置（Cmd+,）→ 多行输入](assets/screenshot-5-settings.png)
 
