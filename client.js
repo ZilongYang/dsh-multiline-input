@@ -806,6 +806,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       // Keep the synchronous keydown handler reading the freshest values.
       React.useLayoutEffect(() => {
         liveRef.current = { phase, draft, mode, browse }
+        // The rc.5 echo lands in the batch that clears the draft, so the last
+        // non-empty draft must be current before that effect runs.
+        if (typeof draft === 'string' && draft.trim() !== '') lastDraftRef.current = draft
       }, [phase, draft, mode, browse])
 
       // Record accepted submissions. DSH 0.2.2+ freezes the draft in
@@ -814,7 +817,6 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       // a failed draft back, so the draft captured at submit is committed when
       // that echo retires, unless the same draft reappeared (failure).
       React.useEffect(() => {
-        if (typeof draft === 'string' && draft.trim() !== '') lastDraftRef.current = draft
         const list = Array.isArray(pending) ? pending : []
         const current = new Set(list.map((item) => (item === null || item === undefined ? '' : item.requestId)))
         const previous = seenPendingRef.current
