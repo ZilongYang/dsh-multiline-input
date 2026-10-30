@@ -20,13 +20,13 @@
 
 ## 0.2.0（2026-10-30 开发完成，待实机验收）
 
-- [x] **tab 可收起**：tab 右侧收起按钮 → 输入框上沿右对齐的 8px 细线（在流内，收起后输入区回收约 16px）；点击细线恢复；按设备持久化；`Cmd/Ctrl+E` 收起后仍生效
+- [x] **tab 可收起**：tab 右侧收起按钮 → 输入框上沿右对齐的 8px 细线（在流内，收起后输入区回收约 16px；3px 粗 + 淡色 chevron + 约 116×20 热区）；点击细线恢复；按设备持久化；`Cmd/Ctrl+E` 收起后仍生效
 - [x] **记录每轮提交的文字**：只记录 Host 接受的消息（rc.5 `sending` + `pendingSubmissions` 确认），设备侧 `localStorage` 全局一份，去重置顶、200 条 / 10 万字符上限；清空入口为未绑定默认键的命令 `multiline-input.clear-history`
 - [x] **↑ / ↓ 浏览输入历史**：单行 ↑/↓、多行 Shift+↑/↓；Esc / 越过最新还原草稿；浏览时 tab 显示「历史 n/m」；替换走 `inputActions.setDraft`
 - [x] **DSH 0.2.1-rc.5 兼容回归**：composer 锚点 / dock 座位 / 布局变量 / Shortcuts 契约已核对，`sending` 相位不拦截；兼容范围 `>=0.2.1-rc.5 <0.3.0-0`
 ## 设计决议（0.2.0 已实现的三项）
 
-- [x] **tab 可收起**（2026-10-29 提出）：收起为 8px 细线、仍在流内（dock 净占约 2px、hero 净占 0px，输入区回收约 16px）；右对齐、40×2px、hover 变 56px 并带 tooltip；状态按设备持久化（`dsh-multiline-input.hint.v1`）；收起后 `Cmd+E` 仍生效。
+- [x] **tab 可收起**（2026-10-29 提出）：收起为 8px 细线、仍在流内（dock 净占约 2px、hero 净占 0px，输入区回收约 16px）；右对齐、3px 粗 + 淡色 chevron、hover 变 56px 并带浅色胶囊底与 tooltip、热区约 116×20px；状态按设备持久化（`dsh-multiline-input.hint.v1`）；收起后 `Cmd+E` 仍生效。
 - [x] **记录每轮提交的文字**（2026-10-30 提出）：设备侧 `localStorage` 全局一份（`dsh-multiline-input.history.v1`）；只记录 Host 接受的消息（`sending` + `pendingSubmissions` 确认），`/` 命令 / 空提交 / 失败提交 / 超长条目不记录；完全相同的文字去重置顶；上限 200 条 / 10 万字符。
 - [x] **↑ / ↓ 浏览输入历史**（2026-10-30 提出）：单行 ↑/↓、多行 Shift+↑/↓；首次 ↑ 保存草稿，Esc 或越过最新还原；循环到最旧再 ↑ 回到最新；浏览时 tab 显示「历史 n/m」；替换走 `inputActions.setDraft()`（不直接改 DOM）；菜单 / IME / 非 plain 相位全部放行；新提交后游标重置。
 - [x] **清空入口**：未绑定默认键的快捷键命令 `multiline-input.clear-history`，在「设置 → 通用 → 快捷键」自行指定组合。
