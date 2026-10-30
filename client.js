@@ -770,8 +770,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       const seenPendingRef = React.useRef(null)
       /** Last non-empty plain draft: rc.5 has no `sending` freeze, so the echo appears at submit. */
       const lastDraftRef = React.useRef('')
-      /** Optimistic rc.5 echo waiting for retirement; committed unless the draft came back. */
-      const tentativeRef = React.useRef(null)
+      /** Optimistic rc.5 echoes waiting for retirement, keyed by request id; committed unless the draft came back. */
+      const tentativeRef = React.useRef(new Map())
       /** Whether this DSH build ever exposed the frozen `sending` phase (0.2.2+). */
       const sendingSeenRef = React.useRef(phase === 'sending')
 
@@ -827,15 +827,21 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         captureRef.current = next.state
         if (next.commit !== null) recordHistoryEntry(next.commit)
         if (!sendingSeenRef.current) {
-          if (tentativeRef.current === null && added.length > 0 && captureRef.current.text === null) {
-            const submitted = added.find((item) => typeof item.text === 'string' && item.text.trim() !== '')
-            if (submitted !== undefined && lastDraftRef.current.trim() !== '') {
-              tentativeRef.current = { text: lastDraftRef.current, id: submitted.requestId }
+          // Queued / steering echoes can stay pending for a long time and several
+          // can be in flight, so each request id keeps its own captured draft.
+          if (captureRef.current.text === null) {
+            for (const item of added) {
+              if (typeof item.text !== 'string' || item.text.trim() === '') continue
+              if (tentativeRef.current.has(item.requestId)) continue
+              if (lastDraftRef.current.trim() === '') continue
+              tentativeRef.current.set(item.requestId, lastDraftRef.current)
             }
           }
-          if (tentativeRef.current !== null && removed.includes(tentativeRef.current.id)) {
-            if (submissionSurvived(draft, tentativeRef.current.text)) recordHistoryEntry(tentativeRef.current.text)
-            tentativeRef.current = null
+          for (const id of removed) {
+            const text = tentativeRef.current.get(id)
+            if (text === undefined) continue
+            tentativeRef.current.delete(id)
+            if (submissionSurvived(draft, text)) recordHistoryEntry(text)
           }
         }
         if (phase === 'sending') {
