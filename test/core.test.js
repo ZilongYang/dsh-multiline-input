@@ -213,6 +213,18 @@ test('recordHistory skips commands/empties and moves a repeat to the head', () =
   assert.equal(t.recordHistory(list, 'hello', 9, { ...limits, totalChars: 4 }).some(entry => entry.text === 'hello'), false)
 })
 
+test('repeating the newest submission keeps exactly one entry', () => {
+  let list = t.recordHistory([], 'same text', 1, { entries: 10, totalChars: 100, entryChars: 50 })
+  const first = list
+  list = t.recordHistory(list, 'same text', 2, { entries: 10, totalChars: 100, entryChars: 50 })
+  assert.equal(list, first)
+  assert.equal(list.length, 1)
+  list = t.recordHistory(list, 'older', 3, { entries: 10, totalChars: 100, entryChars: 50 })
+  list = t.recordHistory(list, 'same text', 4, { entries: 10, totalChars: 100, entryChars: 50 })
+  assert.deepEqual(list.map(entry => entry.text), ['same text', 'older'])
+  assert.equal(list.length, 2)
+})
+
 test('readHistory/writeHistory round-trip and swallow storage failures', () => {
   const store = storageStub()
   t.writeHistory(store, [{ text: 'kept', at: 1 }])

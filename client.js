@@ -683,6 +683,10 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     function recordHistory(entries, text, at = Date.now(), limits = HISTORY_LIMITS) {
       const clean = cleanHistoryText(text, limits)
       if (clean === null) return entries
+      // Repeating the current newest submission is a no-op: one entry, no
+      // timestamp churn, no subscriber render.
+      if (entries.length > 0 && entries[0].text === clean) return entries
+      // Any older identical text moves to the head instead of duplicating.
       const rest = entries.filter((entry) => entry.text !== clean)
       return trimHistory([{ text: clean, at }, ...rest], limits)
     }
