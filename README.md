@@ -20,7 +20,7 @@
 
 ![收起后输入区上沿的细线](assets/screenshot-3-collapsed.png)
 
-![↑/↓ 浏览输入历史，tab 显示「历史 2/3」](assets/screenshot-4-history.png)
+![多行模式下收起，仍保留 4 行高度](assets/screenshot-4-collapsed-multiline.png)
 
 ![设置（Cmd+,）→ 多行输入](assets/screenshot-5-settings.png)
 
