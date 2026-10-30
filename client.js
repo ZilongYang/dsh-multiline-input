@@ -1368,7 +1368,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             'button',
             {
               type: 'button',
-              className: 'dmi-settings-button dmi-settings-danger',
+              className: confirming ? 'dmi-settings-button dmi-settings-danger' : 'dmi-settings-button',
               onClick: () => {
                 if (confirming) {
                   clearHistory()
