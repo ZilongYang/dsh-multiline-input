@@ -1,10 +1,8 @@
 # dsh-multiline-input
 
 > 官网 / Website: <https://dsh.zlmix.com/multiline-input/>
->
-> **开发版 0.2.0**（2026-10-30，未发布）：tab 可收起、记录提交文字、↑/↓ 浏览历史；基线 DSH 0.2.1-rc.5。
 
-[npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub](https://github.com/ZilongYang/dsh-multiline-input) · [Release v0.1.1](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1) · [市场 PR #9938](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938)
+[npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub](https://github.com/ZilongYang/dsh-multiline-input) · [Release v0.2.0](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.0) · [市场 PR #9938](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938)
 
 把 DeepSeek Harness 的对话输入框在**单行 / 多行**之间切换的 Web 客户端插件。
 
@@ -178,7 +176,7 @@ dsh-multiline-input/
 
 - [实施计划（2026-10-30）](docs/PLAN-2026-10-30.md)
 - [实施计划（2026-10-27）](docs/PLAN-2026-10-27.md)
-- 发版检查清单：[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
+- 发版检查清单：[0.2.0](docs/RELEASE-CHECKLIST-0.2.0.md)、[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - [路线图](ROADMAP.md)
 - [变更记录](CHANGELOG.md)
 

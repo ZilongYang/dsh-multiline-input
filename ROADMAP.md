@@ -42,6 +42,6 @@
 ## 文档
 
 - 计划：[docs/PLAN-2026-10-27.md](docs/PLAN-2026-10-27.md)、[docs/PLAN-2026-10-30.md](docs/PLAN-2026-10-30.md)
-- 发版清单：[docs/RELEASE-CHECKLIST-0.1.1.md](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
+- 发版清单：[docs/RELEASE-CHECKLIST-0.2.0.md](docs/RELEASE-CHECKLIST-0.2.0.md)、[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - npm：<https://www.npmjs.com/package/dsh-multiline-input>
-- GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1>
+- GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.0>
