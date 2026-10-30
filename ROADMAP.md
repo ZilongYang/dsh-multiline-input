@@ -18,7 +18,18 @@
 - [x] 子龙刷新后确认观感（目标条三个图标完整可见可点、tab 仍在卡片肩上）
 - [x] 发布：版本号 `0.1.1`、CHANGELOG、`npm publish`、GitHub Release `v0.1.1`，清单见 [docs/RELEASE-CHECKLIST-0.1.1.md](docs/RELEASE-CHECKLIST-0.1.1.md)
 
-## 0.2.0 候选
+## 0.2.0（2026-10-30 开发完成，待实机验收）
+
+- [x] **tab 可收起**：tab 右侧收起按钮 → 输入框上沿右对齐的 8px 细线（在流内，收起后输入区回收约 16px）；点击细线恢复；按设备持久化；`Cmd/Ctrl+E` 收起后仍生效
+- [x] **记录每轮提交的文字**：只记录 Host 接受的消息（rc.5 `sending` + `pendingSubmissions` 确认），设备侧 `localStorage` 全局一份，去重置顶、200 条 / 10 万字符上限；清空入口为未绑定默认键的命令 `multiline-input.clear-history`
+- [x] **↑ / ↓ 浏览输入历史**：单行 ↑/↓、多行 Shift+↑/↓；Esc / 越过最新还原草稿；浏览时 tab 显示「历史 n/m」；替换走 `inputActions.setDraft`
+- [x] **DSH 0.2.1-rc.5 兼容回归**：composer 锚点 / dock 座位 / 布局变量 / Shortcuts 契约已核对，`sending` 相位不拦截；兼容范围 `>=0.2.1-rc.5 <0.3.0-0`
+- [ ] 起始行数可配置（3–5 行），通过 Host `Config` + 插件详情页（0.2.1）
+- [ ] 按会话记忆模式（当前为全局 / 按设备）（0.2.1）
+- [ ] 若 DSH 提供公开的 composer 输入扩展点，替换现有的 DOM 事件接管（0.2.0 结论：只有 `InputActions` 写入面，无键盘仲裁扩展点，暂不替换）
+- [ ] DSH 0.2.2-alpha 版本线的兼容回归
+
+## 0.2.0 候选（历史记录）
 
 - [ ] **（待定，2026-10-29 提出）tab 可收起**：在 tab 上加一个向下箭头按钮，点击把整个 tab 收起成一条**可见、容易识别的细线**（贴在输入框上沿，位置沿用 tab 的右侧对齐与卡片列宽）；点击这条细线把 tab 恢复出来。目的是长期使用、已记住快捷键时把提示让位给空间，需要时又能一眼找到。
   - 待定细节：细线的高度 / 颜色 / 是否带极淡的文字或光标悬停 tooltip；箭头与点击区域的大小（避免误触）；收起时 tab 是否完全不占那 24px 行（还是保留更薄的占位，避免输入区高度来回跳）；收起状态是否按设备持久化（沿用 `localStorage`，与输入模式同一个 key 前缀）；收起后 `Cmd+E` 切换仍照常生效（只是不显示提示）。
@@ -34,7 +45,7 @@
 
 ## 文档
 
-- 计划：[docs/PLAN-2026-10-27.md](docs/PLAN-2026-10-27.md)
+- 计划：[docs/PLAN-2026-10-27.md](docs/PLAN-2026-10-27.md)、[docs/PLAN-2026-10-30.md](docs/PLAN-2026-10-30.md)
 - 发版清单：[docs/RELEASE-CHECKLIST-0.1.1.md](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - npm：<https://www.npmjs.com/package/dsh-multiline-input>
 - GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1>

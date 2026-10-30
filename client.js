@@ -9,8 +9,12 @@
  *   - a hint tab riding the composer card's top shoulder, rendered as its own
  *     row in the composer dock stack (`conversation.input.dock`): the row is in
  *     flow, so a dock card above the composer (goal bar, todos, queue, cost
- *     strip) can never be overlapped — the old floating overlay painted over
- *     them and swallowed their buttons;
+ *     strip) can never be overlapped. The tab can collapse into an 8px line on
+ *     the same shoulder and remembers that choice per device;
+ *   - a device-local record of every accepted submission, recalled with ↑ / ↓
+ *     (single line) or Shift+↑ / Shift+↓ (multi line). The text is captured
+ *     from the frozen `sending` draft and only committed once the Host accepts
+ *     it (`pendingSubmissions` grows); failed sends never enter the history;
  *   - a taller composer floor in multi-line mode, driven by
  *     `<html data-dsh-multiline-input="multi">` and one CSS rule;
  *   - Enter / Shift+Enter swapped in multi-line mode by re-dispatching the
@@ -22,7 +26,7 @@
  * takes its return value as the module exports. React comes from the browser
  * module table; no Harness Client package is imported.
  *
- * Reference contracts (source checkout, 0.2.1-rc.3):
+ * Reference contracts (source checkout, 0.2.1-rc.5, commit 31cfe2aafe):
  *   - packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
  *   - packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
  *     (composer stack: `conversation.input.dock` rows above the card)
@@ -31,6 +35,7 @@
  *   - packages/client/ui-conversation/src/client/input/editor/DraftEditor.tsx
  *   - packages/client/ui-conversation/src/client/input/editor/keymap.ts
  *   - packages/client/ui-conversation/src/client/contract/input.ts
+ *     (`phase: 'sending'` and `pendingSubmissions` acceptance echo)
  *   - packages/client/ui-conversation/src/client/contract/slots.ts
  *   - packages/extensions/cordis-client-runner/src/client/slot-catalog.ts
  *   - packages/client/shortcuts/src/client/types.ts
@@ -50,9 +55,26 @@ window.__ModuleLoader__.load({
     const MODE_STORAGE_KEY = 'dsh-multiline-input.mode.v1'
     /** `<html>` marker read by the height rule. */
     const MODE_ATTRIBUTE = 'data-dsh-multiline-input'
+    /** Device-local hint posture: collapsed line or the full tab. */
+    const HINT_STORAGE_KEY = 'dsh-multiline-input.hint.v1'
+    const HINT_COLLAPSED = 'collapsed'
+    const HINT_EXPANDED = 'expanded'
+    /** Device-local accepted-submission history (never Session data). */
+    const HISTORY_STORAGE_KEY = 'dsh-multiline-input.history.v1'
+    const HISTORY_VERSION = 1
+    const HISTORY_MAX_ENTRIES = 200
+    const HISTORY_MAX_TOTAL_CHARS = 100000
+    const HISTORY_MAX_ENTRY_CHARS = 16000
+    const HISTORY_LIMITS = {
+      entries: HISTORY_MAX_ENTRIES,
+      totalChars: HISTORY_MAX_TOTAL_CHARS,
+      entryChars: HISTORY_MAX_ENTRY_CHARS,
+    }
 
     /** Shortcut command id; dotted form so DSH can persist user overrides. */
     const COMMAND_ID = 'multiline-input.toggle'
+    /** Unbound second command so the user picks keys for clearing the history. */
+    const CLEAR_HISTORY_COMMAND_ID = 'multiline-input.clear-history'
     /**
      * The hint lives in the composer dock stack — the in-flow rows directly
      * above the card (goal 10, queue 20, todos 0, cost strip 5). A high order
@@ -88,6 +110,13 @@ window.__ModuleLoader__.load({
         submitHint: 'Shift+Enter 提交',
         toggleLabel: '切换多行输入',
         hintTitle: '点击切换输入模式；快捷键可在「设置 → 通用 → 快捷键」中修改',
+        collapseHint: '收起提示',
+        collapseHintTitle: '收起输入提示',
+        expandHint: '展开输入提示',
+        expandHintTitle: '展开输入提示（快捷键仍可用）',
+        historyPosition: '历史 {index}/{total}',
+        historyTitle: '↑/↓ 浏览输入历史，Esc 还原草稿',
+        clearHistoryLabel: '清空输入历史',
         ariaLabel: '{action}（{keys}）',
       },
       en: {
@@ -96,6 +125,13 @@ window.__ModuleLoader__.load({
         submitHint: 'Shift+Enter to send',
         toggleLabel: 'Toggle multiline input',
         hintTitle: 'Click to switch the input mode. Edit the shortcut in Settings → General → Keyboard shortcuts.',
+        collapseHint: 'Hide hint',
+        collapseHintTitle: 'Hide the input hint',
+        expandHint: 'Show input hint',
+        expandHintTitle: 'Show the input hint (the shortcut still works)',
+        historyPosition: 'History {index}/{total}',
+        historyTitle: '↑/↓ browse input history; Esc restores the draft',
+        clearHistoryLabel: 'Clear input history',
         ariaLabel: '{action} ({keys})',
       },
     }
@@ -109,6 +145,7 @@ window.__ModuleLoader__.load({
 .dmi-hint-row {
   box-sizing: border-box;
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   /* The card's own column: InputBar's root pads by the shared side clearance
      and the card is capped at the shared card width, centered. The two
@@ -126,6 +163,12 @@ window.__ModuleLoader__.load({
   padding-right: calc(var(--dsw-radius-panel, 16px) + 4px);
   pointer-events: none;
 }
+/* Collapsed: an 8px strip whose 2px line reads as the card's shoulder seam.
+   The cancelled stack gap leaves 2px docked / 0px in the hero composer, so the
+   input area reclaims the tab's height instead of keeping dead space. */
+.dmi-hint-row-collapsed {
+  height: 8px;
+}
 /* A small tab riding on the card's top shoulder: same fill as the card, so it
    reads as one piece, with the card's own hairline continuing under it. */
 .dmi-hint {
@@ -137,7 +180,7 @@ window.__ModuleLoader__.load({
   width: max-content;
   max-width: 100%;
   height: 24px;
-  padding: 0 12px;
+  padding: 0 6px 0 12px;
   background: var(--dsw-specific-input-major);
   border-bottom: 0.5px solid var(--dsw-alias-border-l2);
   border-radius: var(--dsw-radius-md) var(--dsw-radius-md) 0 0;
@@ -171,6 +214,53 @@ window.__ModuleLoader__.load({
 .dmi-hint-sep {
   color: var(--dsw-alias-label-caption);
   opacity: 0.6;
+}
+.dmi-hint-history {
+  color: var(--dsw-alias-label-secondary);
+  font-variant-numeric: tabular-nums;
+}
+/* The collapse affordance sits inside the tab, past a hairline, so collapsing
+   never competes with the mode-toggle hit area. */
+.dmi-hint-collapse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-left: 0.5px solid var(--dsw-alias-border-l2);
+  border-radius: 0 var(--dsw-radius-sm, 6px) 0 0;
+  background: transparent;
+  color: var(--dsw-alias-label-caption);
+  cursor: pointer;
+  pointer-events: auto;
+}
+.dmi-hint-collapse:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+}
+/* The collapsed marker: a short, high-contrast seam the eye can still find. */
+.dmi-hint-line {
+  box-sizing: border-box;
+  width: 40px;
+  height: 2px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 2px;
+  background: var(--dsw-alias-border-l3, var(--dsw-alias-label-caption));
+  cursor: pointer;
+  pointer-events: auto;
+  transition: width 120ms ease, background 120ms ease;
+}
+.dmi-hint-line:hover,
+.dmi-hint-line:focus-visible {
+  width: 56px;
+  background: var(--dsw-alias-label-secondary);
+  outline: none;
 }
 html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
   min-height: calc(${MIN_LINES} * 1lh + 8px);
@@ -244,6 +334,211 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       if (typeof element.setAttribute !== 'function' || typeof element.removeAttribute !== 'function') return
       if (normalizeMode(mode) === MODE_MULTI) element.setAttribute(MODE_ATTRIBUTE, MODE_MULTI)
       else element.removeAttribute(MODE_ATTRIBUTE)
+    }
+
+    /**
+     * Coerce a stored hint posture into one of the two known values.
+     * @param value - raw preference value.
+     * @returns `collapsed` or `expanded`.
+     */
+    function normalizeCollapsed(value) {
+      return value === HINT_COLLAPSED ? HINT_COLLAPSED : HINT_EXPANDED
+    }
+
+    /**
+     * @param value - raw or normalized hint posture.
+     * @returns whether the hint is collapsed.
+     */
+    function isCollapsed(value) {
+      return normalizeCollapsed(value) === HINT_COLLAPSED
+    }
+
+    /**
+     * Read the persisted hint posture.
+     * @param store - `localStorage`-like object, or undefined.
+     * @returns the stored posture, defaulting to expanded.
+     */
+    function readCollapsed(store) {
+      try {
+        return normalizeCollapsed(store?.getItem(HINT_STORAGE_KEY))
+      } catch {
+        return HINT_EXPANDED
+      }
+    }
+
+    /**
+     * Persist the hint posture; a blocked backend only costs the preference.
+     * @param store - `localStorage`-like object, or undefined.
+     * @param value - posture to persist.
+     */
+    function writeCollapsed(store, value) {
+      try {
+        store?.setItem(HINT_STORAGE_KEY, normalizeCollapsed(value))
+      } catch {
+        /* Preference persistence is best-effort. */
+      }
+    }
+
+    /**
+     * Normalize one history entry; anything unreadable is dropped rather than
+     * guessed, so a damaged document cannot inject a wrong recall.
+     * @param value - candidate entry from storage.
+     * @returns a clean entry, or null.
+     */
+    function sanitizeHistoryEntry(value) {
+      if (value === null || typeof value !== 'object') return null
+      if (typeof value.text !== 'string') return null
+      const text = value.text.trim()
+      if (text === '' || text.length > HISTORY_MAX_ENTRY_CHARS) return null
+      const at = Number.isFinite(value.at) ? value.at : 0
+      return { text, at }
+    }
+
+    /**
+     * Trim a history list to the entry and character budgets, keeping order.
+     * @param entries - candidate entries, newest first.
+     * @param limits - budgets to enforce.
+     * @returns the retained entries.
+     */
+    function trimHistory(entries, limits = HISTORY_LIMITS) {
+      const out = []
+      let chars = 0
+      for (const entry of entries) {
+        if (out.length >= limits.entries) break
+        const text = typeof entry?.text === 'string' ? entry.text : ''
+        if (text === '' || text.length > limits.entryChars) continue
+        if (chars + text.length > limits.totalChars) continue
+        out.push(entry)
+        chars += text.length
+      }
+      return out
+    }
+
+    /**
+     * Decode a stored history document, tolerating the legacy bare array and
+     * any corruption (the history is a convenience, never a correctness input).
+     * @param raw - parsed value or the raw JSON string.
+     * @returns clean entries, newest first.
+     */
+    function sanitizeHistory(raw) {
+      let list = raw
+      if (typeof raw === 'string') {
+        try {
+          list = JSON.parse(raw)
+        } catch {
+          return []
+        }
+      }
+      if (list !== null && typeof list === 'object' && !Array.isArray(list)) list = list.entries
+      if (!Array.isArray(list)) return []
+      const out = []
+      const seen = new Set()
+      for (const candidate of list) {
+        const entry = sanitizeHistoryEntry(candidate)
+        if (entry === null || seen.has(entry.text)) continue
+        seen.add(entry.text)
+        out.push(entry)
+      }
+      return trimHistory(out)
+    }
+
+    /**
+     * Record one accepted submission at the head of the history.
+     * @param entries - current history, newest first.
+     * @param text - submitted draft projection.
+     * @param at - acceptance timestamp.
+     * @param limits - budgets to enforce.
+     * @returns the next history (the same reference when nothing was recorded).
+     */
+    function recordHistory(entries, text, at = Date.now(), limits = HISTORY_LIMITS) {
+      if (typeof text !== 'string') return entries
+      const clean = text.trim()
+      if (clean === '' || clean.startsWith('/') || clean.length > limits.entryChars) return entries
+      const rest = entries.filter((entry) => entry.text !== clean)
+      return trimHistory([{ text: clean, at }, ...rest], limits)
+    }
+
+    /**
+     * Read the device history; unreadable storage degrades to empty.
+     * @param store - `localStorage`-like object, or undefined.
+     * @returns clean entries.
+     */
+    function readHistory(store) {
+      try {
+        return sanitizeHistory(store?.getItem(HISTORY_STORAGE_KEY))
+      } catch {
+        return []
+      }
+    }
+
+    /**
+     * Persist the history; quota or privacy failures only cost the record.
+     * @param store - `localStorage`-like object, or undefined.
+     * @param entries - entries to persist.
+     */
+    function writeHistory(store, entries) {
+      try {
+        store?.setItem(HISTORY_STORAGE_KEY, JSON.stringify({ version: HISTORY_VERSION, entries }))
+      } catch {
+        /* History persistence is best-effort. */
+      }
+    }
+
+    /**
+     * Advance the pending-submission capture from one render observation.
+     *
+     * `sending` freezes the draft while the Host decides, so the draft read
+     * there is exactly what the user submitted. A new pending-submission id
+     * means the Host accepted it; a new `sending` before that means the
+     * previous attempt failed and must not be recorded.
+     * @param state - `{ text }` capture slot.
+     * @param observation - current phase, draft, and whether a pending id appeared.
+     * @returns the next capture state and an optional accepted text to record.
+     */
+    function advanceCapture(state, observation) {
+      const phase = observation?.phase
+      const draft = typeof observation?.draft === 'string' ? observation.draft : ''
+      const text = state === null || state === undefined || typeof state.text !== 'string' ? null : state.text
+      if (text !== null && observation?.newPending === true) return { state: { text: null }, commit: text }
+      if (phase !== 'sending') return { state: { text }, commit: null }
+      if (text === null || draft !== text) return { state: { text: draft }, commit: null }
+      return { state: { text }, commit: null }
+    }
+
+    /**
+     * Decide whether one keydown is a history-browsing gesture.
+     * Directive keys stay ordinary caret/selection motion unless the mode's
+     * history chord is used and the composer owns a plain draft.
+     * @param input - flattened event, composer, and browse facts.
+     * @returns `older`, `newer`, `exit`, or null to pass.
+     */
+    function resolveBrowseIntent(input) {
+      const { mode, key, shiftKey, ctrlKey, metaKey, altKey, isComposing, keyCode,
+        phase, menuOpen, inComposer, browsing } = input
+      if (key === 'Escape') return browsing === true ? 'exit' : null
+      const up = key === 'ArrowUp'
+      const down = key === 'ArrowDown'
+      if (!up && !down) return null
+      if (ctrlKey === true || metaKey === true || altKey === true) return null
+      if (isComposing === true || keyCode === 229) return null
+      if (inComposer !== true || phase !== 'plain' || menuOpen === true) return null
+      const multi = normalizeMode(mode) === MODE_MULTI
+      if (multi ? shiftKey !== true : shiftKey === true) return null
+      if (up) return 'older'
+      return browsing === true ? 'newer' : null
+    }
+
+    /**
+     * Step through the history with wraparound.
+     * @param index - current zero-based position, newest = 0.
+     * @param total - number of entries.
+     * @param direction - `older` or `newer`.
+     * @returns the next position.
+     */
+    function nextBrowseIndex(index, total, direction) {
+      if (!(total > 0)) return 0
+      if (direction === 'older') return (index + 1) % total
+      return (index - 1 + total) % total
     }
 
     const MODIFIER_LABELS = { control: 'Ctrl', meta: 'Cmd', alt: 'Alt', shift: 'Shift' }
@@ -382,24 +677,77 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       return formatShortcut(DEFAULTS[profile] ?? null, platform)
     }
 
+    /** Device-local hint posture. */
+    const hintStore = createValueStore(readCollapsed(localStore()))
+    /** Device-local accepted-submission history, newest first. */
+    const historyStore = createValueStore(readHistory(localStore()))
+    /** Browse cursor over the history; `saved` is the draft to restore. */
+    const browseStore = createValueStore({ active: false, index: 0, saved: '' })
+
+    /**
+     * Persist one hint posture and publish it.
+     * @param collapsed - whether the hint should collapse.
+     */
+    function setCollapsed(collapsed) {
+      const value = collapsed === true ? HINT_COLLAPSED : HINT_EXPANDED
+      hintStore.set(value)
+      writeCollapsed(localStore(), value)
+    }
+
+    /**
+     * Record one accepted submission and persist the new history.
+     * @param text - submitted draft projection.
+     */
+    function recordHistoryEntry(text) {
+      const next = recordHistory(historyStore.getSnapshot(), text, Date.now())
+      if (next === historyStore.getSnapshot()) return
+      historyStore.set(next)
+      writeHistory(localStore(), next)
+    }
+
+    /** Drop the whole input history and leave browsing. */
+    function clearHistory() {
+      historyStore.set([])
+      writeHistory(localStore(), [])
+      browseStore.set({ active: false, index: 0, saved: '' })
+    }
+
+    /** Leave history browsing without touching the draft. */
+    function resetBrowse() {
+      if (browseStore.getSnapshot().active !== true) return
+      browseStore.set({ active: false, index: 0, saved: '' })
+    }
+
     //#endregion
 
     //#region Hint component
 
+    /** Keys that are modifiers alone; they must not end a browse session. */
+    const MODIFIER_KEYS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock'])
+
     /**
      * Composer hint on the right shoulder above the card: current shortcut plus
-     * the target mode, click to toggle. Always visible, so the binding stays
-     * discoverable while typing. The outer row is the dock-stack slot that
-     * reserves the tab's 24px, so no strip above the card can be covered.
-     * @param props - injected stores, dictionary and toggle callback.
+     * the target mode, click to toggle; collapses into a shoulder seam. The
+     * outer row is the dock-stack slot that reserves the tab's space, so no
+     * strip above the card can be covered. While the composer is focused the
+     * component also owns submitted-text history recall (↑ / ↓, Shift+↑/↓).
+     * @param props - standard session props, injected stores, dictionary, and
+     * toggle callback.
      * @returns the hint row.
      */
-    function MultiLineHint({ t, modeStore, shortcutStore, toggle }) {
+    function MultiLineHint({ t, modeStore, shortcutStore, toggle, useInput, useSession, inputActions }) {
       const mode = React.useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot, modeStore.getSnapshot)
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
-      const action = mode === MODE_MULTI ? t('toSingle') : t('toMulti')
-      const meta = mode === MODE_MULTI ? t('submitHint') : null
+      const collapsed = isCollapsed(React.useSyncExternalStore(hintStore.subscribe, hintStore.getSnapshot, hintStore.getSnapshot))
+      const browse = React.useSyncExternalStore(browseStore.subscribe, browseStore.getSnapshot, browseStore.getSnapshot)
+      const entries = React.useSyncExternalStore(historyStore.subscribe, historyStore.getSnapshot, historyStore.getSnapshot)
+      const phase = useInput((value) => value.phase)
+      const draft = useInput((value) => value.draft)
+      const pending = useSession((value) => value.pendingSubmissions)
       const rowRef = React.useRef(null)
+      const liveRef = React.useRef({ phase, draft, mode, browse })
+      const captureRef = React.useRef({ text: null })
+      const seenPendingRef = React.useRef(null)
 
       // Cancel exactly the row gap the composer stack is using, so the tab's
       // bottom hairline lands on the card's top edge. The docked composer gaps
@@ -429,6 +777,137 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         }
       }, [])
 
+      // Keep the synchronous keydown handler reading the freshest values.
+      React.useLayoutEffect(() => {
+        liveRef.current = { phase, draft, mode, browse }
+      }, [phase, draft, mode, browse])
+
+      // Record only submissions the Host accepted: `sending` freezes the draft,
+      // and a newly pending submission id is the acceptance echo. A failed send
+      // returns to editing without that echo, so it never enters the history.
+      React.useEffect(() => {
+        const current = new Set(Array.isArray(pending)
+          ? pending.map((item) => (item === null || item === undefined ? '' : item.requestId))
+          : [])
+        if (seenPendingRef.current === null) {
+          seenPendingRef.current = current
+        } else {
+          const newPending = [...current].some((id) => !seenPendingRef.current.has(id))
+          seenPendingRef.current = current
+          const next = advanceCapture(captureRef.current, { phase, draft, newPending })
+          captureRef.current = next.state
+          if (next.commit !== null) recordHistoryEntry(next.commit)
+        }
+        if (phase === 'sending') {
+          browseStore.set({ active: false, index: 0, saved: '' })
+        }
+      }, [phase, draft, pending])
+
+      // History navigation. Capture on document so the editor never sees the
+      // history chord; replacement still rides the public InputActions face so
+      // undo merging, chips, and IME handling stay DSH's own.
+      React.useEffect(() => {
+        if (inputActions === null || inputActions === undefined) return undefined
+        const onKeyDown = (event) => {
+          if (!(event instanceof KeyboardEvent)) return
+          const target = event.target instanceof Element ? event.target : null
+          if (target === null) return
+          const editor = target.closest(COMPOSER_INPUT)
+          if (editor === null || !(editor instanceof HTMLElement)) return
+          if (editor.getAttribute('contenteditable') !== 'true') return
+          const card = editor.closest(COMPOSER_CARD)
+          if (card === null) return
+          const live = liveRef.current
+          const menuOpen = card.querySelector(`${COMPOSER_OVERLAY} ${TRIGGER_MENU}`) !== null
+          const intent = resolveBrowseIntent({
+            mode: live.mode,
+            key: event.key,
+            shiftKey: event.shiftKey,
+            ctrlKey: event.ctrlKey,
+            metaKey: event.metaKey,
+            altKey: event.altKey,
+            isComposing: event.isComposing,
+            keyCode: event.keyCode,
+            phase: live.phase,
+            menuOpen,
+            inComposer: true,
+            browsing: live.browse.active === true,
+          })
+          if (intent === null) {
+            if (live.browse.active === true && !MODIFIER_KEYS.has(event.key)) {
+              browseStore.set({ active: false, index: 0, saved: '' })
+              liveRef.current = { ...live, browse: { active: false, index: 0, saved: '' } }
+            }
+            return
+          }
+          const list = historyStore.getSnapshot()
+          if (intent === 'older' && live.browse.active !== true && list.length === 0) return
+          event.preventDefault()
+          event.stopPropagation()
+          if (intent === 'exit' || (intent === 'newer' && live.browse.active === true && live.browse.index === 0)) {
+            const saved = live.browse.saved
+            const nextBrowse = { active: false, index: 0, saved: '' }
+            browseStore.set(nextBrowse)
+            liveRef.current = { ...live, browse: nextBrowse }
+            inputActions.setDraft(saved)
+            inputActions.persistDraft()
+            return
+          }
+          const saved = live.browse.active === true ? live.browse.saved : live.draft
+          const index = live.browse.active === true ? nextBrowseIndex(live.browse.index, list.length, intent) : 0
+          const entry = list[index]
+          if (entry === undefined) return
+          const nextBrowse = { active: true, index, saved }
+          browseStore.set(nextBrowse)
+          liveRef.current = { ...live, browse: nextBrowse, draft: entry.text }
+          inputActions.setDraft(entry.text)
+          inputActions.persistDraft()
+        }
+        const onEdit = () => {
+          if (liveRef.current.browse.active === true) {
+            const nextBrowse = { active: false, index: 0, saved: '' }
+            browseStore.set(nextBrowse)
+            liveRef.current = { ...liveRef.current, browse: nextBrowse }
+          }
+        }
+        document.addEventListener('keydown', onKeyDown, true)
+        document.addEventListener('paste', onEdit, true)
+        document.addEventListener('cut', onEdit, true)
+        return () => {
+          document.removeEventListener('keydown', onKeyDown, true)
+          document.removeEventListener('paste', onEdit, true)
+          document.removeEventListener('cut', onEdit, true)
+        }
+      }, [inputActions])
+
+      const action = mode === MODE_MULTI ? t('toSingle') : t('toMulti')
+      const meta = browse.active === true || mode !== MODE_MULTI ? null : t('submitHint')
+      const label = browse.active === true
+        ? t('historyPosition', { index: browse.index + 1, total: entries.length })
+        : action
+
+      if (collapsed) {
+        return h(
+          'div',
+          { ref: rowRef, className: 'dmi-hint-row dmi-hint-row-collapsed', 'data-ml-input-hint': '' },
+          h('button', {
+            type: 'button',
+            className: 'dmi-hint-line',
+            title: t('expandHintTitle'),
+            'aria-label': t('expandHint'),
+            'aria-expanded': false,
+            onMouseDown: (event) => {
+              event.preventDefault()
+            },
+            onClick: (event) => {
+              event.preventDefault()
+              event.stopPropagation()
+              setCollapsed(false)
+            },
+          }),
+        )
+      }
+
       return h(
         'div',
         { ref: rowRef, className: 'dmi-hint-row', 'data-ml-input-hint': '' },
@@ -440,8 +919,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             {
               type: 'button',
               className: 'dmi-hint-button',
-              title: t('hintTitle'),
-              'aria-label': shortcut === null ? action : t('ariaLabel', { action, keys: shortcut }),
+              title: browse.active === true ? t('historyTitle') : t('hintTitle'),
+              'aria-label': shortcut === null ? label : t('ariaLabel', { action: label, keys: shortcut }),
               onMouseDown: (event) => {
                 event.preventDefault()
               },
@@ -454,7 +933,37 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             meta !== null && h('span', { className: 'dmi-hint-meta' }, meta),
             meta !== null && h('span', { className: 'dmi-hint-sep', 'aria-hidden': true }, '·'),
             shortcut !== null && h('span', { className: 'dmi-hint-key' }, shortcut),
-            h('span', { className: 'dmi-hint-label' }, action),
+            h('span', { className: browse.active === true ? 'dmi-hint-history' : 'dmi-hint-label' }, label),
+          ),
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-hint-collapse',
+              title: t('collapseHintTitle'),
+              'aria-label': t('collapseHint'),
+              'aria-expanded': true,
+              onMouseDown: (event) => {
+                event.preventDefault()
+              },
+              onClick: (event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setCollapsed(true)
+              },
+            },
+            h(
+              'svg',
+              { viewBox: '0 0 12 12', width: 12, height: 12, 'aria-hidden': true },
+              h('path', {
+                d: 'M2.5 4.5 6 8l3.5-3.5',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 1.4,
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round',
+              }),
+            ),
           ),
         ),
       )
@@ -464,7 +973,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
 
     /**
      * Register the dictionaries, styles, stores, keyboard takeover, shortcut
-     * command and the composer hint.
+     * commands and the composer hint.
      * @param ctx - client plugin context.
      */
     function apply(ctx) {
@@ -555,8 +1064,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         }
       }, 'ml-input: multiline enter')
 
-      // Shortcut command. The service may materialize after this plugin, so the
-      // registration waits for it; a conflicting default only costs the hotkey.
+      // Shortcut commands. The service may materialize after this plugin, so
+      // the registrations wait for it; a conflicting default only costs the
+      // hotkey, and the clear command is unbound by design.
       ctx.inject(['shortcuts'], (scope) => {
         scope.effect(() => {
           const refresh = () => {
@@ -602,6 +1112,34 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             dispose()
           }
         }, 'ml-input: shortcut command')
+
+        scope.effect(() => {
+          let dispose = () => {}
+          try {
+            dispose = scope.shortcuts.register({
+              id: CLEAR_HISTORY_COMMAND_ID,
+              label: () => t('clearHistoryLabel'),
+              aliases: ['清空输入历史', '输入历史', 'clear input history', 'clear history'],
+              defaults: {},
+              regions: ['page', 'editable'],
+              modals: [],
+              resolve: (context) => {
+                if (context.modal !== null) return { status: 'pass' }
+                return {
+                  status: 'handled',
+                  run: () => {
+                    clearHistory()
+                  },
+                }
+              },
+            })
+          } catch (error) {
+            console.warn('[dsh-multiline-input] clear-history registration skipped:', error)
+          }
+          return () => {
+            dispose()
+          }
+        }, 'ml-input: clear history command')
       })
 
       ctx.slots.inject(HINT_SLOT, () => ctx.slots.register({
@@ -621,11 +1159,21 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
        */
       __test: {
         COMMAND_ID,
+        CLEAR_HISTORY_COMMAND_ID,
         HINT_SLOT,
         HINT_ID,
         HINT_ORDER,
         MODE_ATTRIBUTE,
         MODE_STORAGE_KEY,
+        HINT_STORAGE_KEY,
+        HINT_COLLAPSED,
+        HINT_EXPANDED,
+        HISTORY_STORAGE_KEY,
+        HISTORY_VERSION,
+        HISTORY_MAX_ENTRIES,
+        HISTORY_MAX_TOTAL_CHARS,
+        HISTORY_MAX_ENTRY_CHARS,
+        HISTORY_LIMITS,
         MODE_SINGLE,
         MODE_MULTI,
         MIN_LINES,
@@ -635,6 +1183,19 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         readMode,
         writeMode,
         applyModeAttribute,
+        normalizeCollapsed,
+        isCollapsed,
+        readCollapsed,
+        writeCollapsed,
+        sanitizeHistoryEntry,
+        sanitizeHistory,
+        trimHistory,
+        recordHistory,
+        readHistory,
+        writeHistory,
+        advanceCapture,
+        resolveBrowseIntent,
+        nextBrowseIndex,
         formatShortcut,
         labelFromCatalog,
         shouldIntercept,

@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Multiline input",
-    "description": "Toggle the conversation composer between single-line and multi-line: Ctrl+E by default (editable in Settings → General → Keyboard shortcuts), Enter inserts a newline and Shift+Enter sends while multi-line."
+    "description": "Toggle the conversation composer between single-line and multi-line: Ctrl+E by default (editable in Settings → General → Keyboard shortcuts), Enter inserts a newline and Shift+Enter sends while multi-line; the hint tab collapses into a seam, and ↑/↓ recall recently submitted text."
   }
 }

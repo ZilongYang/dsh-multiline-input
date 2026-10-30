@@ -169,3 +169,120 @@ test('the hint rides the composer dock stack, not the floating overlay seat', ()
   // order keeps the tab last, flush on the card's top shoulder.
   assert.ok(t.HINT_ORDER > 20, `HINT_ORDER ${t.HINT_ORDER} must sort after the shipped dock rows`)
 })
+
+test('hint posture persists per device and degrades safely', () => {
+  const store = storageStub()
+  assert.equal(t.normalizeCollapsed('collapsed'), 'collapsed')
+  assert.equal(t.normalizeCollapsed('expanded'), 'expanded')
+  assert.equal(t.normalizeCollapsed('garbage'), 'expanded')
+  assert.equal(t.isCollapsed('collapsed'), true)
+  assert.equal(t.isCollapsed('expanded'), false)
+  assert.equal(t.readCollapsed(store), 'expanded')
+  t.writeCollapsed(store, 'collapsed')
+  assert.equal(store.values.get(t.HINT_STORAGE_KEY), 'collapsed')
+  assert.equal(t.readCollapsed(store), 'collapsed')
+  assert.equal(t.readCollapsed(storageStub({}, { throws: true })), 'expanded')
+  assert.equal(t.readCollapsed(undefined), 'expanded')
+  assert.doesNotThrow(() => t.writeCollapsed(storageStub({}, { throws: true }), 'collapsed'))
+})
+
+test('sanitizeHistory tolerates the legacy array and damaged documents', () => {
+  assert.deepEqual(t.sanitizeHistory(null), [])
+  assert.deepEqual(t.sanitizeHistory('not json'), [])
+  assert.deepEqual(t.sanitizeHistory({ version: 1, entries: 'nope' }), [])
+  assert.deepEqual(t.sanitizeHistory([{ text: '  one  ', at: 1 }, { text: '' }, { nope: 1 }]), [{ text: 'one', at: 1 }])
+  assert.deepEqual(t.sanitizeHistory(JSON.stringify({ version: 1, entries: [{ text: 'two', at: 2 }] })), [{ text: 'two', at: 2 }])
+  // Duplicate texts collapse to the first occurrence.
+  assert.deepEqual(t.sanitizeHistory([{ text: 'a' }, { text: 'a' }]), [{ text: 'a', at: 0 }])
+})
+
+test('recordHistory skips commands/empties and moves a repeat to the head', () => {
+  const limits = { entries: 3, totalChars: 100, entryChars: 20 }
+  let list = []
+  list = t.recordHistory(list, '  hello  ', 1, limits)
+  list = t.recordHistory(list, '   ', 2, limits)
+  list = t.recordHistory(list, '/help', 3, limits)
+  list = t.recordHistory(list, 'x'.repeat(21), 4, limits)
+  assert.deepEqual(list.map(entry => entry.text), ['hello'])
+  list = t.recordHistory(list, 'second', 5, limits)
+  list = t.recordHistory(list, 'third', 6, limits)
+  list = t.recordHistory(list, 'fourth', 7, limits)
+  assert.deepEqual(list.map(entry => entry.text), ['fourth', 'third', 'second'])
+  list = t.recordHistory(list, 'second', 8, limits)
+  assert.deepEqual(list.map(entry => entry.text), ['second', 'fourth', 'third'])
+  assert.equal(t.recordHistory(list, 'hello', 9, { ...limits, totalChars: 4 }).some(entry => entry.text === 'hello'), false)
+})
+
+test('readHistory/writeHistory round-trip and swallow storage failures', () => {
+  const store = storageStub()
+  t.writeHistory(store, [{ text: 'kept', at: 1 }])
+  assert.deepEqual(t.readHistory(store), [{ text: 'kept', at: 1 }])
+  assert.deepEqual(t.readHistory(storageStub({ [t.HISTORY_STORAGE_KEY]: 'broken' })), [])
+  assert.deepEqual(t.readHistory(storageStub({}, { throws: true })), [])
+  assert.deepEqual(t.readHistory(undefined), [])
+  assert.doesNotThrow(() => t.writeHistory(storageStub({}, { throws: true }), [{ text: 'x', at: 1 }]))
+})
+
+test('advanceCapture records only an accepted sending draft', () => {
+  let state = { text: null }
+  let step = t.advanceCapture(state, { phase: 'plain', draft: 'old', newPending: false })
+  state = step.state
+  assert.equal(state.text, null)
+  step = t.advanceCapture(state, { phase: 'sending', draft: 'hello', newPending: false })
+  state = step.state
+  assert.equal(state.text, 'hello')
+  assert.equal(step.commit, null)
+  // A new pending submission means the Host accepted it.
+  step = t.advanceCapture(state, { phase: 'plain', draft: '', newPending: true })
+  assert.equal(step.commit, 'hello')
+  assert.equal(step.state.text, null)
+  // Failed sends return to editing; a later sending replaces the stale capture.
+  state = t.advanceCapture({ text: null }, { phase: 'sending', draft: 'failed', newPending: false }).state
+  step = t.advanceCapture(state, { phase: 'plain', draft: 'failed', newPending: false })
+  assert.equal(step.commit, null)
+  assert.equal(step.state.text, 'failed')
+  state = t.advanceCapture(step.state, { phase: 'sending', draft: 'ok', newPending: false }).state
+  assert.equal(state.text, 'ok')
+})
+
+test('resolveBrowseIntent only takes the mode-specific history chord', () => {
+  const base = {
+    mode: 'single', key: 'ArrowUp', shiftKey: false, ctrlKey: false, metaKey: false, altKey: false,
+    isComposing: false, keyCode: 38, phase: 'plain', menuOpen: false, inComposer: true, browsing: false,
+  }
+  assert.equal(t.resolveBrowseIntent(base), 'older')
+  assert.equal(t.resolveBrowseIntent({ ...base, key: 'ArrowDown' }), null)
+  assert.equal(t.resolveBrowseIntent({ ...base, key: 'ArrowDown', browsing: true }), 'newer')
+  assert.equal(t.resolveBrowseIntent({ ...base, key: 'Escape' }), null)
+  assert.equal(t.resolveBrowseIntent({ ...base, key: 'Escape', browsing: true }), 'exit')
+  assert.equal(t.resolveBrowseIntent({ ...base, shiftKey: true }), null)
+  assert.equal(t.resolveBrowseIntent({ ...base, mode: 'multi' }), null)
+  assert.equal(t.resolveBrowseIntent({ ...base, mode: 'multi', shiftKey: true }), 'older')
+  assert.equal(t.resolveBrowseIntent({ ...base, mode: 'multi', shiftKey: true, key: 'ArrowDown', browsing: true }), 'newer')
+  for (const override of [
+    { ctrlKey: true }, { metaKey: true }, { altKey: true }, { isComposing: true }, { keyCode: 229 },
+    { phase: 'sending' }, { phase: 'claimed' }, { menuOpen: true }, { inComposer: false }, { key: 'a' },
+  ]) assert.equal(t.resolveBrowseIntent({ ...base, ...override }), null, JSON.stringify(override))
+})
+
+test('nextBrowseIndex wraps in both directions', () => {
+  assert.equal(t.nextBrowseIndex(0, 5, 'older'), 1)
+  assert.equal(t.nextBrowseIndex(4, 5, 'older'), 0)
+  assert.equal(t.nextBrowseIndex(2, 5, 'newer'), 1)
+  assert.equal(t.nextBrowseIndex(0, 5, 'newer'), 4)
+  assert.equal(t.nextBrowseIndex(0, 0, 'older'), 0)
+})
+
+test('the rc.5 sending phase is never intercepted', () => {
+  assert.equal(t.shouldIntercept(interceptInput({ phase: 'sending' })), null)
+  assert.equal(t.shouldIntercept(interceptInput({ phase: 'sending', shiftKey: true })), null)
+})
+
+test('0.2.0 storage keys, limits, and the clear-history command are stable', () => {
+  assert.equal(t.HINT_STORAGE_KEY, 'dsh-multiline-input.hint.v1')
+  assert.equal(t.HISTORY_STORAGE_KEY, 'dsh-multiline-input.history.v1')
+  assert.equal(t.CLEAR_HISTORY_COMMAND_ID, 'multiline-input.clear-history')
+  assert.equal(t.HISTORY_MAX_ENTRIES, 200)
+  assert.equal(t.HISTORY_MAX_TOTAL_CHARS, 100000)
+  assert.equal(t.HISTORY_MAX_ENTRY_CHARS, 16000)
+})

@@ -1,6 +1,8 @@
 # dsh-multiline-input
 
 > 官网 / Website: <https://dsh.zlmix.com/multiline-input/>
+>
+> **开发版 0.2.0**（2026-10-30，未发布）：tab 可收起、记录提交文字、↑/↓ 浏览历史；基线 DSH 0.2.1-rc.5。
 
 [npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub](https://github.com/ZilongYang/dsh-multiline-input) · [Release v0.1.1](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.1.1) · [市场 PR #9938](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938)
 
@@ -44,6 +46,9 @@ pnpm add link:/absolute/path/to/dsh-multiline-input
 | `Enter` | 发送 | 换行 |
 | `Shift+Enter` | 换行 | 发送 |
 | `Cmd/Ctrl+Enter` | 加速提交（不变） | 加速提交（不变） |
+| `↑` / `↓` | 浏览输入历史 | 原生移动光标 |
+| `Shift+↑` / `Shift+↓` | 原生扩展选择 | 浏览输入历史 |
+| `Esc`（浏览中） | 还原浏览前草稿 | 还原浏览前草稿 |
 | `/`、`@` 菜单打开时的 `Enter` | 选中菜单项 | 选中菜单项 |
 | 输入法候选态的 `Enter` | 交给输入法 | 交给输入法 |
 
@@ -79,7 +84,7 @@ tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输�
 - **Enter / Shift+Enter**：在 document 捕获阶段拦下多行模式下的 `Enter`，向编辑器重放一个翻转了 `shiftKey` 的合成按键——仍由 DSH 自己的 composer keymap 决定「换行」还是「提交」，撤销历史、输入法保护、busy-enter（queue/steer）、菜单仲裁全部保持原逻辑；
 - **快捷键**：通过 `ctx.shortcuts.register()` 注册命令，编辑与持久化完全交给 DSH。
 
-源码依据（DSH `0.2.1-rc.3`，commit `22ddee3`）：
+源码依据（DSH `0.2.1-rc.5`，commit `31cfe2aafe`）：
 
 | 契约 | 源码文件 |
 |---|---|
@@ -94,7 +99,7 @@ tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输�
 
 ## 兼容性
 
-- 在 DSH **0.2.1-rc.3**（桌面版 / Web）验证；`dsh.compatibility.dsh` = `>=0.2.1-rc.3 <0.3.0-0`。
+- 在 DSH **0.2.1-rc.5**（桌面版 / Web）验证；`dsh.compatibility.dsh` = `>=0.2.1-rc.5 <0.3.0-0`。
 - 依赖 composer 的 `data-*` 锚点与 `role="listbox"`，属 DSH 内部实现；升级 DSH 后需要回归（锚点缺失时插件只 warn，不会崩）。
 - tab 行的宽度与右对齐复用了 DSH 布局变量 `--dsh-composer-card-max-width` / `--dsh-composer-side-clearance`（都带兜底值），若 DSH 改了输入区宽度算法，tab 会与卡片右边缘错开几像素。
 - Web + Linux 没有默认快捷键（DSH 对 Web 可选组合有白名单限制），需在设置里自行指定。
@@ -113,7 +118,7 @@ dsh-multiline-input/
 └── docs/                   # 计划、发版清单
 ```
 
-- 测试：`npm test`（`node --test`，当前 13 条用例）。
+- 测试：`npm test`（`node --test`，当前 23 条用例）。
 - 语法：`node --check client.js && node --check index.js`。
 - 调试：HMR 默认忽略 `**/node_modules`，链接安装的 `client.js` 改动不会被热加载；改完客户端代码后在插件页关/开一次（或重启应用），再刷新页面。
 
@@ -138,13 +143,16 @@ dsh-multiline-input/
 ## 已知限制
 
 - 仅作用于 Web GUI（桌面版与浏览器），TUI / CLI 不适用。
-- 多行起始高度是代码常量 4 行，暂不提供配置项。
+- 多行起始高度是代码常量 4 行，暂不提供配置项（0.2.1 计划改为 Host Config）。
+- 输入历史是设备本地 `localStorage` 明文（全局一份），可能包含敏感内容；用「设置 → 快捷键 → 清空输入历史」清空。多窗口之间不做实时同步。
+- 0.2.0 以 DSH 0.2.1-rc.5 为基线；rc.3 上 `sending` 相位不存在，历史记录不生效（不崩溃），收起与方向键仍可用。
 - tab 行占输入框上方 24px：输入区整体比没有 tab 时高约 18px（24px 行高抵掉 6px 栈间距），消息区相应少 18px。
 - hero（空会话）状态下栈行距是 8px，tab 行会按运行时读到的实际 `row-gap` 自适应，视觉上与 dock 态一致。
 - 若默认键位与其它插件的命令默认值冲突，插件会降级为「点击 tab 切换」并在控制台输出一次警告。
 
 ## 文档
 
+- [实施计划（2026-10-30）](docs/PLAN-2026-10-30.md)
 - [实施计划（2026-10-27）](docs/PLAN-2026-10-27.md)
 - 发版检查清单：[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - [路线图](ROADMAP.md)
