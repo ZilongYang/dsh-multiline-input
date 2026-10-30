@@ -56,7 +56,7 @@
 - [x] 自检：`CHECK_SITE_SKIP_CROSS=dsh-session-titler node scripts/check-site.mjs` → **0 error / 1 warning**。跳过原因：邻居 `dsh-session-titler` 站点 0.2.1 / package.json 0.2.2（另一条发布流水线），与本次无关
 - [x] 部署：`CHECK_SITE_SKIP_CROSS=dsh-session-titler ./scripts/deploy.sh` → 备份 `/opt/1panel/www/sites/dsh.zlmix.com/backups/20261030-232221`，8 条路由 200
 - [x] 线上回读：`/multiline-input/` 的 JSON-LD / `data-version` / `pkg-line` / chip = 0.2.0；图标含 `#4176E6`；首页 JSON-LD / 卡片 = 0.2.0；`sitemap.xml` lastmod = 2026-10-30
-- [ ] 截图：`assets/shots/` 仍是 0.1.x 市场图（细线、历史、设置页均未入图），待重截后单独提交
+- [x] 截图：重截 5 张（单行 / 多行 / 收起细线 / 历史浏览 / 设置页），更新仓库 `assets/` + `screenshots.json` + README，并同步官网 `assets/shots/`（含重拼 `hero-ml.png`）与新增「0.2.0 新增」展示段；站点提交 `b17d0fd`，部署备份 `20261030-234401`
 
 ## 6. 本机安装（desktop profile）
 
