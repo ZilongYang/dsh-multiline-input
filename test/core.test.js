@@ -370,9 +370,9 @@ test('cleanHistoryText and removeHistory support optimistic record and rollback'
 
 test('the Plugins page configuration renders the summary and sections', () => {
   const store = (value) => ({ getSnapshot: () => value, subscribe: () => () => {} })
-  const t = (key, params) => (params === undefined ? key : `${key} ${JSON.stringify(params)}`)
+  const translate = (key, params) => (params === undefined ? key : `${key} ${JSON.stringify(params)}`)
   const props = {
-    t,
+    t: translate,
     historyStore: store([{ text: 'a', at: 1 }]),
     hintStore: store('expanded'),
     shortcutStore: store('Cmd+E'),
