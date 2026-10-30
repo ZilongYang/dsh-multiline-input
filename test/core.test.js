@@ -347,3 +347,11 @@ test('MultiLineHint shows the history position while browsing', () => {
   assert.match(label.children[0], /^historyPosition/)
   t.browseStore.set({ active: false, index: 0, saved: '' })
 })
+
+test('submissionSurvived distinguishes acceptance from a restored failed draft', () => {
+  assert.equal(t.submissionSurvived('', 'hello'), true)
+  assert.equal(t.submissionSurvived('later typing', 'hello'), true)
+  assert.equal(t.submissionSurvived('hello', 'hello'), false)
+  assert.equal(t.submissionSurvived('  hello  ', 'hello'), false)
+  assert.equal(t.submissionSurvived('', ''), false)
+})

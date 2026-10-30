@@ -93,7 +93,7 @@ tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输�
 - **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input][contenteditable="true"]` 设 `min-height: calc(4 * 1lh + 8px)`，不碰 DSH 的滚动上限；
 - **tab 提示**：注册到 `conversation.input.dock` 座位（`order: 1000`，排在 todo 0 / 额度横条 5 / 目标条 10 / 队列 20 之后），成为输入卡片正上方**独立的一行**：展开 24px、收起 8px，宽度与卡片同列、tab 右对齐到卡片右边缘；`margin-bottom` 吃掉栈的行距（dock 态 6px、hero 态 8px，运行时按实际 `row-gap` 同步），让 tab 底边与卡片上沿齐平、视觉上仍是「卡片肩上的 tab」，但因为占位而**不可能压到任何上方卡片**；收起态靠同一行 8px 高度 + 抵消行距把输入区回收约 16px。
 - 旧实现走 `conversation.input.overlay` 浮层（`bottom: 100%` + `z-index: 2`），会盖住目标条右侧的文案与暂停 / 编辑 / 清除按钮；
-- **输入历史**：轮询 `useInput(s => s.phase)` / `s.draft` 与 `useSession(s => s.pendingSubmissions)`：`sending` 相位冻结的 draft 就是提交内容，`pendingSubmissions` 出现新 `requestId` 才确认 Host 接受并写入 `localStorage`；浏览时通过公开的 `inputActions.setDraft()` 替换草稿（`setDraft` 会合并进撤销历史），方向键手势仍在 document 捕获阶段接管。
+- **输入历史**：轮询 `useInput(s => s.phase/draft)` 与 `useSession(s => s.pendingSubmissions)`。rc.5 / rc.3 的提交回显是**乐观**的（提交时出现、失败时移除并回填草稿），所以提交时先记下草稿、待回显退休时若草稿没有回填才写入 `localStorage`；0.2.2-alpha 起存在 `sending` 冻结相位，则直接用冻结草稿 + 接受回显，更精确。浏览时通过公开的 `inputActions.setDraft()` 替换草稿（`setDraft` 会合并进撤销历史），方向键手势仍在 document 捕获阶段接管。
 - **Enter / Shift+Enter**：在 document 捕获阶段拦下多行模式下的 `Enter`，向编辑器重放一个翻转了 `shiftKey` 的合成按键——仍由 DSH 自己的 composer keymap 决定「换行」还是「提交」，撤销历史、输入法保护、busy-enter（queue/steer）、菜单仲裁全部保持原逻辑；
 - **快捷键**：通过 `ctx.shortcuts.register()` 注册命令，编辑与持久化完全交给 DSH。
 
@@ -131,7 +131,7 @@ dsh-multiline-input/
 └── docs/                   # 计划、发版清单
 ```
 
-- 测试：`npm test`（`node --test`，当前 27 条用例）。
+- 测试：`npm test`（`node --test`，当前 28 条用例）。
 - 语法：`node --check client.js && node --check index.js`。
 - 调试：HMR 默认忽略 `**/node_modules`，链接安装的 `client.js` 改动不会被热加载；改完客户端代码后在插件页关/开一次（或重启应用），再刷新页面。
 
@@ -158,7 +158,7 @@ dsh-multiline-input/
 - 仅作用于 Web GUI（桌面版与浏览器），TUI / CLI 不适用。
 - 多行起始高度是代码常量 4 行，暂不提供配置项（0.2.1 计划改为 Host Config）。
 - 输入历史是设备本地 `localStorage` 明文（全局一份），可能包含敏感内容；用「设置 → 快捷键 → 清空输入历史」清空。多窗口之间不做实时同步。
-- 0.2.0 以 DSH 0.2.1-rc.5 为基线；rc.3 上 `sending` 相位不存在，历史记录不生效（不崩溃），收起与方向键仍可用。
+- 0.2.0 在 DSH 0.2.1-rc.5 验证（`sending` 相位是 0.2.2-alpha 才有的，rc.5/rc.3 用乐观回显 + 失败草稿回填判定，已按同一 `pendingSubmissions` 契约核对）；rc.3 上收起与方向键同样可用。
 - tab 行展开态占输入框上方 24px（输入区比没有 tab 时高约 18px，24px 行高抵掉 6px 栈间距）；收起态 8px（净高约 2px），输入区回收约 16px。
 - hero（空会话）状态下栈行距是 8px，tab 行会按运行时读到的实际 `row-gap` 自适应，视觉上与 dock 态一致。
 - 若默认键位与其它插件的命令默认值冲突，插件会降级为「点击 tab 切换」并在控制台输出一次警告。

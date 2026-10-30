@@ -534,6 +534,21 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     }
 
     /**
+     * Decide whether an optimistic submission echo was accepted rather than
+     * restored after failure. rc.5 clears the draft on submit and puts the
+     * failed draft back, so a matching draft at retirement means failure.
+     * @param draft - draft at the echo's retirement.
+     * @param text - draft captured when the echo appeared.
+     * @returns whether the submission should enter the history.
+     */
+    function submissionSurvived(draft, text) {
+      const current = typeof draft === 'string' ? draft.trim() : ''
+      const sent = typeof text === 'string' ? text.trim() : ''
+      if (sent === '') return false
+      return current !== sent
+    }
+
+    /**
      * Step through the history with wraparound.
      * @param index - current zero-based position, newest = 0.
      * @param total - number of entries.
@@ -753,6 +768,12 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
       const liveRef = React.useRef({ phase, draft, mode, browse })
       const captureRef = React.useRef({ text: null })
       const seenPendingRef = React.useRef(null)
+      /** Last non-empty plain draft: rc.5 has no `sending` freeze, so the echo appears at submit. */
+      const lastDraftRef = React.useRef('')
+      /** Optimistic rc.5 echo waiting for retirement; committed unless the draft came back. */
+      const tentativeRef = React.useRef(null)
+      /** Whether this DSH build ever exposed the frozen `sending` phase (0.2.2+). */
+      const sendingSeenRef = React.useRef(phase === 'sending')
 
       // Cancel exactly the row gap the composer stack is using, so the tab's
       // bottom hairline lands on the card's top edge. The docked composer gaps
@@ -787,21 +808,35 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         liveRef.current = { phase, draft, mode, browse }
       }, [phase, draft, mode, browse])
 
-      // Record only submissions the Host accepted: `sending` freezes the draft,
-      // and a newly pending submission id is the acceptance echo. A failed send
-      // returns to editing without that echo, so it never enters the history.
+      // Record accepted submissions. DSH 0.2.2+ freezes the draft in
+      // `sending` and adds the echo only on acceptance, so the captured draft
+      // is committed immediately. rc.5 echoes optimistically at submit and puts
+      // a failed draft back, so the draft captured at submit is committed when
+      // that echo retires, unless the same draft reappeared (failure).
       React.useEffect(() => {
-        const current = new Set(Array.isArray(pending)
-          ? pending.map((item) => (item === null || item === undefined ? '' : item.requestId))
-          : [])
-        if (seenPendingRef.current === null) {
-          seenPendingRef.current = current
-        } else {
-          const newPending = [...current].some((id) => !seenPendingRef.current.has(id))
-          seenPendingRef.current = current
-          const next = advanceCapture(captureRef.current, { phase, draft, newPending })
-          captureRef.current = next.state
-          if (next.commit !== null) recordHistoryEntry(next.commit)
+        if (typeof draft === 'string' && draft.trim() !== '') lastDraftRef.current = draft
+        const list = Array.isArray(pending) ? pending : []
+        const current = new Set(list.map((item) => (item === null || item === undefined ? '' : item.requestId)))
+        const previous = seenPendingRef.current
+        seenPendingRef.current = current
+        if (previous === null) return
+        if (phase === 'sending') sendingSeenRef.current = true
+        const added = list.filter((item) => item !== null && item !== undefined && !previous.has(item.requestId))
+        const removed = [...previous].filter((id) => !current.has(id))
+        const next = advanceCapture(captureRef.current, { phase, draft, newPending: added.length > 0 })
+        captureRef.current = next.state
+        if (next.commit !== null) recordHistoryEntry(next.commit)
+        if (!sendingSeenRef.current) {
+          if (tentativeRef.current === null && added.length > 0 && captureRef.current.text === null) {
+            const submitted = added.find((item) => typeof item.text === 'string' && item.text.trim() !== '')
+            if (submitted !== undefined && lastDraftRef.current.trim() !== '') {
+              tentativeRef.current = { text: lastDraftRef.current, id: submitted.requestId }
+            }
+          }
+          if (tentativeRef.current !== null && removed.includes(tentativeRef.current.id)) {
+            if (submissionSurvived(draft, tentativeRef.current.text)) recordHistoryEntry(tentativeRef.current.text)
+            tentativeRef.current = null
+          }
         }
         if (phase === 'sending') {
           browseStore.set({ active: false, index: 0, saved: '' })
@@ -1205,6 +1240,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         readHistory,
         writeHistory,
         advanceCapture,
+        submissionSurvived,
         resolveBrowseIntent,
         nextBrowseIndex,
         formatShortcut,

@@ -5,11 +5,11 @@
 面向 DSH **0.2.1-rc.5** 的交互更新（本轮不发布 npm / GitHub / 官网）：
 
 - **tab 可收起**：tab 右侧新增收起按钮，点击后变成输入卡片上沿右对齐的 8px 细线；细线可点击展开、悬停有 tooltip，收起状态按设备持久化（`dsh-multiline-input.hint.v1`）。收起后输入区回收约 16px，`Cmd/Ctrl+E` 仍照常切换。
-- **记录每轮提交的文字**：只记录被 Host 接受的普通消息（rc.5 的 `sending` 相位 + `pendingSubmissions` 确认信号），失败/被拒提交、`/` 命令、空提交、超长条目不入库；设备侧 `localStorage` 全局一份（`dsh-multiline-input.history.v1`），完全相同的文字去重置顶，最多 200 条 / 10 万字符。
+- **记录每轮提交的文字**：只记录被 Host 接受的普通消息（rc.5 / rc.3：提交时的 `pendingSubmissions` 乐观回显 + 失败草稿回填判定；0.2.2-alpha 起改用 `sending` 冻结相位 + 接受回显），失败/被拒提交、`/` 命令、空提交、超长条目不入库；设备侧 `localStorage` 全局一份（`dsh-multiline-input.history.v1`），完全相同的文字去重置顶，最多 200 条 / 10 万字符。
 - **↑ / ↓ 浏览输入历史**：单行 `↑` / `↓`，多行 `Shift+↑` / `Shift+↓`；首次 `↑` 保存当前草稿，`Esc` 或在新条目上再按 `↓` 还原；浏览时 tab 显示「历史 n/m」；替换走公开的 `inputActions.setDraft`，不直接改 DOM。
 - **清空历史命令**：新增未绑定默认键的 `multiline-input.clear-history`，在「设置 → 通用 → 快捷键」自行指定组合。
 - **DSH 0.2.1-rc.5 兼容回归**：核对 composer 锚点 / dock 座位 / 布局变量 / Shortcuts 契约，`sending` 相位不拦截；兼容范围改为 `>=0.2.1-rc.5 <0.3.0-0`。
-- 测试：`node --test` 27 条全绿（新增历史、浏览、收起、sending 相位用例）。
+- 测试：`node --test` 28 条全绿（新增历史、浏览、收起、sending 相位用例）。
 
 ## 0.1.1 — 2026-10-29
 
