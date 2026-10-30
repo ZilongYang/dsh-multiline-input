@@ -323,7 +323,9 @@ test('MultiLineHint renders expanded, collapsed, and browsing states', () => {
   t.setCollapsed(true)
   const collapsed = t.MultiLineHint(props)
   assert.equal(collapsed.props.className, 'dmi-hint-row dmi-hint-row-collapsed')
-  assert.equal(collapsed.children[0].props.className, 'dmi-hint-line')
+  const line = collapsed.children[0]
+  assert.equal(line.props.className, 'dmi-hint-line')
+  assert.deepEqual(line.children.map(child => child.props.className), ['dmi-hint-seam', 'dmi-hint-chevron'])
   t.setCollapsed(false)
 })
 

@@ -244,23 +244,57 @@ window.__ModuleLoader__.load({
 }
 /* The collapsed marker: a short, high-contrast seam the eye can still find. */
 .dmi-hint-line {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
   box-sizing: border-box;
-  width: 40px;
-  height: 2px;
+  width: 96px;
+  height: 8px;
   margin: 0;
   padding: 0;
   border: 0;
-  border-radius: 2px;
-  background: var(--dsw-alias-border-l3, var(--dsw-alias-label-caption));
+  border-radius: 4px;
+  background: transparent;
+  color: var(--dsw-alias-label-tertiary);
   cursor: pointer;
   pointer-events: auto;
-  transition: width 120ms ease, background 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
+}
+/* Enlarge the hit area without spending layout: the strip sits in the stack
+   gap and the card's top padding is blank, so the extension never steals a
+   control. */
+.dmi-hint-line::after {
+  content: '';
+  position: absolute;
+  inset: -6px -10px;
+}
+.dmi-hint-seam {
+  display: block;
+  width: 40px;
+  height: 3px;
+  border-radius: 2px;
+  background: currentColor;
+  transition: width 120ms ease;
+}
+.dmi-hint-chevron {
+  opacity: 0.55;
+  transition: opacity 120ms ease;
 }
 .dmi-hint-line:hover,
 .dmi-hint-line:focus-visible {
-  width: 56px;
-  background: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
   outline: none;
+}
+.dmi-hint-line:hover .dmi-hint-seam,
+.dmi-hint-line:focus-visible .dmi-hint-seam {
+  width: 56px;
+}
+.dmi-hint-line:hover .dmi-hint-chevron,
+.dmi-hint-line:focus-visible .dmi-hint-chevron {
+  opacity: 1;
 }
 html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
   min-height: calc(${MIN_LINES} * 1lh + 8px);
@@ -940,21 +974,37 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         return h(
           'div',
           { ref: rowRef, className: 'dmi-hint-row dmi-hint-row-collapsed', 'data-ml-input-hint': '' },
-          h('button', {
-            type: 'button',
-            className: 'dmi-hint-line',
-            title: t('expandHintTitle'),
-            'aria-label': t('expandHint'),
-            'aria-expanded': false,
-            onMouseDown: (event) => {
-              event.preventDefault()
+          h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-hint-line',
+              title: t('expandHintTitle'),
+              'aria-label': t('expandHint'),
+              'aria-expanded': false,
+              onMouseDown: (event) => {
+                event.preventDefault()
+              },
+              onClick: (event) => {
+                event.preventDefault()
+                event.stopPropagation()
+                setCollapsed(false)
+              },
             },
-            onClick: (event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              setCollapsed(false)
-            },
-          }),
+            h('span', { className: 'dmi-hint-seam', 'aria-hidden': true }),
+            h(
+              'svg',
+              { className: 'dmi-hint-chevron', viewBox: '0 0 12 12', width: 10, height: 10, 'aria-hidden': true },
+              h('path', {
+                d: 'M2.5 7.5 6 4l3.5 3.5',
+                fill: 'none',
+                stroke: 'currentColor',
+                strokeWidth: 1.4,
+                strokeLinecap: 'round',
+                strokeLinejoin: 'round',
+              }),
+            ),
+          ),
         )
       }
 
