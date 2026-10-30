@@ -299,3 +299,51 @@ test('advanceCapture can commit one accepted draft and capture the next in one s
   assert.equal(step.commit, 'first')
   assert.equal(step.state.text, 'second')
 })
+
+test('MultiLineHint renders expanded, collapsed, and browsing states', () => {
+  const store = (value) => ({ getSnapshot: () => value, subscribe: () => () => {} })
+  const props = {
+    t: (key, params) => (params === undefined ? key : `${key} ${JSON.stringify(params)}`),
+    modeStore: store('single'),
+    shortcutStore: store('Cmd+E'),
+    toggle: () => {},
+    useInput: (selector) => selector({ phase: 'plain', draft: '' }),
+    useSession: (selector) => selector({ pendingSubmissions: [] }),
+    inputActions: { setDraft: () => {}, persistDraft: () => {} },
+  }
+  t.setCollapsed(false)
+  const expanded = t.MultiLineHint(props)
+  assert.equal(expanded.props.className, 'dmi-hint-row')
+  const tab = expanded.children[0]
+  assert.equal(tab.props.className, 'dmi-hint')
+  // The mode button, the separator, the key, and the collapse control.
+  assert.equal(tab.children.length, 2)
+  assert.equal(tab.children[1].props.className, 'dmi-hint-collapse')
+
+  t.setCollapsed(true)
+  const collapsed = t.MultiLineHint(props)
+  assert.equal(collapsed.props.className, 'dmi-hint-row dmi-hint-row-collapsed')
+  assert.equal(collapsed.children[0].props.className, 'dmi-hint-line')
+  t.setCollapsed(false)
+})
+
+test('MultiLineHint shows the history position while browsing', () => {
+  const store = (value) => ({ getSnapshot: () => value, subscribe: () => () => {} })
+  t.recordHistoryEntry('the only entry')
+  const browsing = { active: true, index: 0, saved: '' }
+  t.browseStore.set(browsing)
+  const tree = t.MultiLineHint({
+    t: (key, params) => (params === undefined ? key : `${key} ${JSON.stringify(params)}`),
+    modeStore: store('single'),
+    shortcutStore: store('Cmd+E'),
+    toggle: () => {},
+    useInput: (selector) => selector({ phase: 'plain', draft: 'the only entry' }),
+    useSession: (selector) => selector({ pendingSubmissions: [] }),
+    inputActions: { setDraft: () => {}, persistDraft: () => {} },
+  })
+  const main = tree.children[0].children[0]
+  assert.equal(main.props.title, 'historyTitle')
+  const label = main.children[main.children.length - 1]
+  assert.match(label.children[0], /^historyPosition/)
+  t.browseStore.set({ active: false, index: 0, saved: '' })
+})

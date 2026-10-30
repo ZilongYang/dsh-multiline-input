@@ -12,7 +12,10 @@ import { readFileSync } from 'node:fs'
 /** React stub: the factory body only captures `createElement`. */
 const reactStub = {
   createElement: (type, props, ...children) => ({ type, props, children }),
-  useSyncExternalStore: () => undefined,
+  useSyncExternalStore: (subscribe, getSnapshot) => getSnapshot(),
+  useRef: (initial) => ({ current: initial }),
+  useLayoutEffect: () => {},
+  useEffect: () => {},
 }
 
 /**

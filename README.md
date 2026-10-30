@@ -131,7 +131,7 @@ dsh-multiline-input/
 └── docs/                   # 计划、发版清单
 ```
 
-- 测试：`npm test`（`node --test`，当前 25 条用例）。
+- 测试：`npm test`（`node --test`，当前 27 条用例）。
 - 语法：`node --check client.js && node --check index.js`。
 - 调试：HMR 默认忽略 `**/node_modules`，链接安装的 `client.js` 改动不会被热加载；改完客户端代码后在插件页关/开一次（或重启应用），再刷新页面。
 
