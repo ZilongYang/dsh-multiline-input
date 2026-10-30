@@ -380,8 +380,13 @@ test('the Plugins page configuration renders the summary and sections', () => {
     setCollapsed: () => {},
   }
   assert.equal(t.MultiLineSettings({ ...props, view: 'summary' }), 'settingsSummary')
-  const tree = t.MultiLineSettings({ ...props, view: 'page' })
+  const tree = t.MultiLineSettingsBody(props)
   assert.equal(tree.props.className, 'dmi-settings')
+  const section = t.MultiLineSettingsSection(props)
+  assert.equal(section.type(section.props).props.className, 'dmi-settings')
+  assert.equal(t.SETTINGS_SECTION_SLOT, 'settings.section')
+  assert.equal(t.SETTINGS_SECTION_ID, 'multiline-input')
+  assert.ok(t.SETTINGS_SECTION_ORDER > 20)
   assert.equal(tree.children.length, 4)
   assert.equal(tree.children[0].props.className, 'dmi-settings-section')
   assert.equal(tree.children[0].children[0].children[0].props.className, 'dmi-settings-title')

@@ -86,6 +86,10 @@ window.__ModuleLoader__.load({
     /** The Plugins page's per-row configuration seat. */
     const SETTINGS_SLOT = 'plugins.row.config'
     const SETTINGS_KEY = 'dsh-multiline-input#multiline-input'
+    /** Settings dialog section (Cmd/Ctrl+,), the primary configuration entry. */
+    const SETTINGS_SECTION_SLOT = 'settings.section'
+    const SETTINGS_SECTION_ID = 'multiline-input'
+    const SETTINGS_SECTION_ORDER = 30
     /** Multi-line floor in text lines (the requested 3–5 range). */
     const MIN_LINES = 4
 
@@ -120,6 +124,7 @@ window.__ModuleLoader__.load({
         historyPosition: '历史 {index}/{total}',
         historyTitle: '↑/↓ 浏览输入历史，Esc 还原草稿',
         clearHistoryLabel: '清空输入历史',
+        settingsSectionLabel: '多行输入',
         settingsSummary: '收起提示、输入历史与快捷键',
         settingsShortcut: '快捷键',
         settingsShortcutDescription: '在系统设置里修改「切换多行输入」的键位。',
@@ -156,6 +161,7 @@ window.__ModuleLoader__.load({
         historyPosition: 'History {index}/{total}',
         historyTitle: '↑/↓ browse input history; Esc restores the draft',
         clearHistoryLabel: 'Clear input history',
+        settingsSectionLabel: 'Multiline input',
         settingsSummary: 'Collapsible hint, input history, and shortcut',
         settingsShortcut: 'Shortcut',
         settingsShortcutDescription: 'Change the “Toggle multiline input” binding in Settings.',
@@ -1319,14 +1325,13 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
      * @param props - owner view, dictionary, stores, and write actions.
      * @returns the summary line or the settings sections.
      */
-    function MultiLineSettings({ view, t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+    function MultiLineSettingsBody({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
       const entries = React.useSyncExternalStore(historyStore.subscribe, historyStore.getSnapshot, historyStore.getSnapshot)
       const collapsed = isCollapsed(React.useSyncExternalStore(hintStore.subscribe, hintStore.getSnapshot, hintStore.getSnapshot))
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
       const [opened, setOpened] = React.useState(null)
       const [confirming, setConfirming] = React.useState(false)
       const [cleared, setCleared] = React.useState(false)
-      if (view === 'summary') return t('settingsSummary')
       const keys = shortcut === null ? t('settingsUnbound') : shortcut
       const count = entries.length
       return h(
@@ -1403,6 +1408,25 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
           h('p', { className: 'dmi-settings-desc' }, t('settingsMoreSoon')),
         ),
       )
+    }
+
+    /**
+     * Render the Plugins-page row configuration entry.
+     * @param props - owner view, dictionary, stores, and write actions.
+     * @returns the summary line or the shared settings body.
+     */
+    function MultiLineSettings({ view, t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+      if (view === 'summary') return t('settingsSummary')
+      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed })
+    }
+
+    /**
+     * Render the Settings dialog section (the primary entry, opened with Cmd/Ctrl+,).
+     * @param props - dictionary, stores, and write actions; the shell owns chrome.
+     * @returns the shared settings body.
+     */
+    function MultiLineSettingsSection({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed })
     }
 
     //#endregion
@@ -1592,6 +1616,15 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         locale: NS,
         inject: () => ({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }),
       }, MultiLineSettings))
+
+      ctx.slots.inject(SETTINGS_SECTION_SLOT, () => ctx.slots.register({
+        name: SETTINGS_SECTION_SLOT,
+        id: SETTINGS_SECTION_ID,
+        order: SETTINGS_SECTION_ORDER,
+        label: () => t('settingsSectionLabel'),
+        locale: NS,
+        inject: () => ({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }),
+      }, MultiLineSettingsSection))
     }
 
     return {
@@ -1605,6 +1638,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         CLEAR_HISTORY_COMMAND_ID,
         SETTINGS_SLOT,
         SETTINGS_KEY,
+        SETTINGS_SECTION_SLOT,
+        SETTINGS_SECTION_ID,
+        SETTINGS_SECTION_ORDER,
         HINT_SLOT,
         HINT_ID,
         HINT_ORDER,
@@ -1625,6 +1661,8 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         DEFAULTS,
         MultiLineHint,
         MultiLineSettings,
+        MultiLineSettingsBody,
+        MultiLineSettingsSection,
         openSettingsPanel,
         hintStore,
         setCollapsed,
