@@ -75,11 +75,13 @@ pnpm add link:/absolute/path/to/dsh-multiline-input
 
 tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输入 / 单行输入」，点击仍可切换。
 
+同一个快捷键列表里还有一条默认不绑定的命令 **清空输入历史**（`multiline-input.clear-history`），需要时自行指定组合即可。
+
 ## 与相近插件的区别
 
 | 插件 | 它做什么 | 本插件 |
 |---|---|---|
-| `dsh-composer-expand` | 工具行按钮把输入框撑到 70vh | 双模式 + 快捷键 + Enter/Shift+Enter 互换 + 常驻 tab |
+| `dsh-composer-expand` | 工具行按钮把输入框撑到 70vh | 双模式 + 快捷键 + Enter/Shift+Enter 互换 + 可收起 tab + 输入历史 |
 | `dsh-fullscreen-input` | 另开全屏面板写多行，Enter 换行、Ctrl+Enter 发送 | 内联在原生输入框，多行时 Shift+Enter 发送（带输入法保护） |
 | `dsh-ctrl-enter-submit` | 全局把 Enter 改成换行、Ctrl/Cmd+Enter 发送 | 单行保持原生 Enter 发送，多行才交换 |
 | `dsh-composer-ux` | 可配置发送/换行键位 + 右键菜单 + 快捷指令面板 | 只专注输入模式与高度 |
@@ -89,7 +91,7 @@ tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输�
 
 插件遵守 DSH 的第三方客户端插件契约（`dsh.client` + `dsh.bundle.patch`），Host 半只保留一个可安装 / 启停的 bundle row，功能全部在 `client.js`：
 
-- **模式状态**：模块级 store + `localStorage['dsh-multiline-input.mode.v1']`，投影为 `<html data-dsh-ml-input="multi">`；
+- **模式状态**：模块级 store + `localStorage['dsh-multiline-input.mode.v1']`，投影为 `<html data-dsh-multiline-input="multi">`；
 - **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input][contenteditable="true"]` 设 `min-height: calc(4 * 1lh + 8px)`，不碰 DSH 的滚动上限；
 - **tab 提示**：注册到 `conversation.input.dock` 座位（`order: 1000`，排在 todo 0 / 额度横条 5 / 目标条 10 / 队列 20 之后），成为输入卡片正上方**独立的一行**：展开 24px、收起 8px，宽度与卡片同列、tab 右对齐到卡片右边缘；`margin-bottom` 吃掉栈的行距（dock 态 6px、hero 态 8px，运行时按实际 `row-gap` 同步），让 tab 底边与卡片上沿齐平、视觉上仍是「卡片肩上的 tab」，但因为占位而**不可能压到任何上方卡片**；收起态靠同一行 8px 高度 + 抵消行距把输入区回收约 16px。
 - 旧实现走 `conversation.input.overlay` 浮层（`bottom: 100%` + `z-index: 2`），会盖住目标条右侧的文案与暂停 / 编辑 / 清除按钮；
