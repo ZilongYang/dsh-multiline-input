@@ -515,13 +515,13 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     function resolveBrowseIntent(input) {
       const { mode, key, shiftKey, ctrlKey, metaKey, altKey, isComposing, keyCode,
         phase, menuOpen, inComposer, browsing } = input
+      if (ctrlKey === true || metaKey === true || altKey === true) return null
+      if (isComposing === true || keyCode === 229) return null
+      if (inComposer !== true || phase !== 'plain' || menuOpen === true) return null
       if (key === 'Escape') return browsing === true ? 'exit' : null
       const up = key === 'ArrowUp'
       const down = key === 'ArrowDown'
       if (!up && !down) return null
-      if (ctrlKey === true || metaKey === true || altKey === true) return null
-      if (isComposing === true || keyCode === 229) return null
-      if (inComposer !== true || phase !== 'plain' || menuOpen === true) return null
       const multi = normalizeMode(mode) === MODE_MULTI
       if (multi ? shiftKey !== true : shiftKey === true) return null
       if (up) return 'older'
