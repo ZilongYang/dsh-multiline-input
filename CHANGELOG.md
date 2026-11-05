@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 — 2026-11-05
+
+面向 DSH **0.2.2-rc.1** 的兼容版本（交互能力与 0.2.0 相同）：
+
+- **修复：多行高度在发送期间塌陷**。0.2.2 把普通消息改成 `sending` 冻结相位——等待 Host 接受期间编辑器是 `contenteditable="false"`；0.2.0 的 4 行下限选择器写死了 `[contenteditable="true"]`，于是每次发送高度会先塌回宿主的 36px（约 1 行）再弹回。现在下限同样覆盖只读提交相位（`sending` / `adjudicating` / `submitting` / `claimed`），主规则与 `@supports` 回退同步更新。
+- **安装门禁**：新增 `engines.dsh = ">=0.2.1-rc.5 <0.3.0-0"`（DSH 的兼容判定带 `includePrerelease`，0.2.2-rc.1 可过）；`dsh.compatibility.dshReleases` 补 `0.2.1-rc.5` / `0.2.2-rc.1`。
+- **菜单判定**：改用 0.2.2 新增的 `data-trigger-menu` 锚点，同时保留 `[role="listbox"]` 以兼容旧宿主。
+- **文档**：源码依据更新到 DSH `0.2.2-rc.1`（commit `66491b05`）；补充 `sending` 双路径、引用（quote）文本进入历史、`contenteditable` 属 DOM 契约等说明；新增 [兼容性核查](docs/COMPAT-2026-11-05-dsh-0.2.2-rc.1.md) 与 [实施计划](docs/PLAN-2026-11-05.md)。
+- 测试：`node --test` 32 条全绿（新增 2 条：只读相位的高度下限、菜单双锚点）。
+
 ## 0.2.0 — 2026-10-30
 
 面向 DSH **0.2.1-rc.5** 的交互更新：

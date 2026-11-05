@@ -395,3 +395,27 @@ test('the Plugins page configuration renders the summary and sections', () => {
   assert.equal(t.SETTINGS_KEY, 'dsh-multiline-input#multiline-input')
   assert.equal(t.openSettingsPanel(), false)
 })
+
+test('the multi-line floor covers the read-only submit phases', () => {
+  // DSH 0.2.2 keeps the editor `contenteditable="false"` while an ordinary
+  // message waits for the Host (`phase: 'sending'`), so a contenteditable-only
+  // selector would drop the floor and collapse the composer on every send.
+  assert.match(t.FLOOR_SELECTOR, /\[contenteditable="true"\]/)
+  assert.match(t.FLOOR_SELECTOR, /\[data-phase\]:not\(\[data-phase="plain"\]\)/)
+  assert.match(t.FLOOR_SELECTOR, /\[data-composer-card\]/)
+  assert.match(t.FLOOR_SELECTOR, /\[data-composer-input\]/)
+  // The main rule and the `@supports not (height: 1lh)` fallback both carry it.
+  const occurrences = t.CSS.split(t.FLOOR_SELECTOR).length - 1
+  assert.equal(occurrences, 2)
+  assert.match(t.CSS, /min-height: calc\(4 \* 1lh \+ 8px\);/)
+  assert.match(t.CSS, /min-height: 104px;/)
+  // The old contenteditable-only floor selector is gone.
+  assert.doesNotMatch(t.CSS, /\[data-composer-input\]\[contenteditable="true"\] \{/)
+})
+
+test('the trigger menu is detected through both anchors', () => {
+  // 0.2.2 marks the menu surface with `data-trigger-menu`; older hosts only
+  // carry `role="listbox"` inside the composer overlay.
+  assert.match(t.TRIGGER_MENU, /data-trigger-menu/)
+  assert.match(t.TRIGGER_MENU, /role="listbox"/)
+})

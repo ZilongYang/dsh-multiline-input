@@ -12,11 +12,17 @@
  *     strip) can never be overlapped. The tab can collapse into an 8px line on
  *     the same shoulder and remembers that choice per device;
  *   - a device-local record of every accepted submission, recalled with ↑ / ↓
- *     (single line) or Shift+↑ / Shift+↓ (multi line). The text is captured
- *     from the frozen `sending` draft and only committed once the Host accepts
- *     it (`pendingSubmissions` grows); failed sends never enter the history;
+ *     (single line) or Shift+↑ / Shift+↓ (multi line). On DSH 0.2.2+ the text
+ *     is captured from the frozen `sending` draft and only committed once the
+ *     Host accepts it (`pendingSubmissions` grows); hosts without that phase
+ *     (0.2.1-rc.5 / rc.3) fall back to the optimistic echo and a failed-send
+ *     draft confirmation. Failed sends never enter the history;
  *   - a taller composer floor in multi-line mode, driven by
- *     `<html data-dsh-multiline-input="multi">` and one CSS rule;
+ *     `<html data-dsh-multiline-input="multi">` and one CSS rule. The floor
+ *     also covers the read-only submit phases (`sending` and the command
+ *     phases): 0.2.2 makes the editor `contenteditable="false"` while a
+ *     message waits for the Host, and a `contenteditable="true"`-only
+ *     selector would drop the floor and collapse the composer on every send;
  *   - Enter / Shift+Enter swapped in multi-line mode by re-dispatching the
  *     same keydown with the opposite `shiftKey`. DSH's own composer keymap
  *     keeps deciding newline vs submit, so undo history, the IME guard,
@@ -26,17 +32,27 @@
  * takes its return value as the module exports. React comes from the browser
  * module table; no Harness Client package is imported.
  *
- * Reference contracts (source checkout, 0.2.1-rc.5, commit 31cfe2aafe):
+ * Reference contracts (source checkout, 0.2.2-rc.1, commit 66491b05; the
+ * 0.2.1-rc.5 contracts were re-read at commit b830ec95):
  *   - packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
+ *     (`machineBusy` now includes `sending`, so ordinary sends are read-only)
  *   - packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
  *     (composer stack: `conversation.input.dock` rows above the card)
  *   - packages/client/ui-conversation/src/client/skeleton/InputBar.module.css
- *     (`.root` side clearance, `.card` card-width cap)
+ *     (`.root` side clearance, `.card` card-width cap, `.input` 36px floor)
  *   - packages/client/ui-conversation/src/client/input/editor/DraftEditor.tsx
+ *   - packages/client/ui-conversation/src/client/input/editor/ComposerContentEditable.tsx
+ *     (the `[data-composer-input]` host owns `data-phase` and `contenteditable`)
  *   - packages/client/ui-conversation/src/client/input/editor/keymap.ts
+ *   - packages/client/ui-conversation/src/client/input/machine.ts
+ *     (a message keeps the frozen slot until `sink-settled`)
  *   - packages/client/ui-conversation/src/client/contract/input.ts
- *     (`phase: 'sending'` and `pendingSubmissions` acceptance echo)
+ *     (`phase: 'sending'`, `pendingSubmissions` acceptance echo, `insertQuote`)
+ *   - packages/client/ui-conversation/src/client/input/editor/QuoteNode.tsx
+ *     (quotes project into the draft as Markdown blockquote text)
  *   - packages/client/ui-conversation/src/client/contract/slots.ts
+ *   - packages/client/ui-input-trigger/src/client/MenuView.tsx
+ *     (`data-trigger-menu` on the menu surface, `role="listbox"` inside)
  *   - packages/extensions/cordis-client-runner/src/client/slot-catalog.ts
  *   - packages/client/shortcuts/src/client/types.ts
  *   - packages/client/modules/README.zh.md
@@ -92,6 +108,15 @@ window.__ModuleLoader__.load({
     const SETTINGS_SECTION_ORDER = 30
     /** Multi-line floor in text lines (the requested 3–5 range). */
     const MIN_LINES = 4
+    /**
+     * Multi-line floor selector. `contenteditable="true"` covers the editable
+     * composer; every non-plain phase is the read-only submit plane (0.2.2
+     * makes the editor non-editable while a message waits for the Host to
+     * accept it), where the floor must survive or the composer collapses to
+     * the host's 36px input on every send. The sessionless Workspace picker
+     * keeps `data-phase="plain"` (or no phase), so it is not matched.
+     */
+    const FLOOR_SELECTOR = `html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input]:is([contenteditable="true"], [data-phase]:not([data-phase="plain"]))`
 
     const MODE_SINGLE = 'single'
     const MODE_MULTI = 'multi'
@@ -411,7 +436,7 @@ window.__ModuleLoader__.load({
   line-height: 18px;
   color: var(--dsw-alias-label-caption);
 }
-html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
+${FLOOR_SELECTOR} {
   min-height: calc(${MIN_LINES} * 1lh + 8px);
 }
 @supports not (height: 1lh) {
@@ -483,7 +508,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
   line-height: 18px;
   color: var(--dsw-alias-label-caption);
 }
-html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][contenteditable="true"] {
+${FLOOR_SELECTOR} {
     min-height: ${MIN_LINES * 24 + 8}px;
   }
 }
@@ -873,8 +898,22 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
     const COMPOSER_CARD = '[data-composer-card]'
     const COMPOSER_INPUT = '[data-composer-input]'
     const COMPOSER_OVERLAY = '[data-composer-overlay]'
-    const TRIGGER_MENU = '[role="listbox"]'
+    /**
+     * Trigger menu facts. DSH 0.2.2 marks the menu surface with
+     * `data-trigger-menu` (and keeps `role="listbox"` on its scrolling
+     * viewport); older hosts only carry the role, so both are accepted inside
+     * the composer overlay.
+     */
+    const TRIGGER_MENU = ':is([data-trigger-menu], [role="listbox"])'
     const EDITABLE_SELECTOR = 'input, textarea, select, [contenteditable="true"], [contenteditable=""]'
+
+    /**
+     * @param card - the composer card element.
+     * @returns whether the trigger menu is open inside the composer overlay.
+     */
+    function menuOpenIn(card) {
+      return card.querySelector(`${COMPOSER_OVERLAY} ${TRIGGER_MENU}`) !== null
+    }
 
     /** @returns the device `localStorage`, or undefined when blocked. */
     function localStore() {
@@ -1072,7 +1111,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
           const card = editor.closest(COMPOSER_CARD)
           if (card === null) return
           const live = liveRef.current
-          const menuOpen = card.querySelector(`${COMPOSER_OVERLAY} ${TRIGGER_MENU}`) !== null
+          const menuOpen = menuOpenIn(card)
           const intent = resolveBrowseIntent({
             mode: live.mode,
             key: event.key,
@@ -1438,7 +1477,7 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
             inComposer: true,
             editable: true,
             phase: editor.getAttribute('data-phase'),
-            menuOpen: card.querySelector(`${COMPOSER_OVERLAY} ${TRIGGER_MENU}`) !== null,
+            menuOpen: menuOpenIn(card),
           })
           if (decision === null) return
           event.preventDefault()
@@ -1597,6 +1636,9 @@ html[${MODE_ATTRIBUTE}="multi"] [data-composer-card] [data-composer-input][conte
         MODE_SINGLE,
         MODE_MULTI,
         MIN_LINES,
+        FLOOR_SELECTOR,
+        TRIGGER_MENU,
+        CSS,
         DEFAULTS,
         MultiLineHint,
         MultiLineSettings,

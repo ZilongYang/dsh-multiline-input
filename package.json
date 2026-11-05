@@ -1,6 +1,6 @@
 {
   "name": "dsh-multiline-input",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "type": "module",
   "description": "Single/multi-line composer toggle for DeepSeek Harness: a collapsible hint tab, an editable Cmd/Ctrl+E shortcut, submitted-text history with arrow-key recall, a 4-line floor for multi-line drafts, and Shift+Enter to send.",
   "license": "MIT",
@@ -19,7 +19,8 @@
     "web"
   ],
   "engines": {
-    "node": ">=20.3"
+    "node": ">=20.3",
+    "dsh": ">=0.2.1-rc.5 <0.3.0-0"
   },
   "scripts": {
     "test": "node --test"
@@ -58,7 +59,11 @@
       ]
     },
     "compatibility": {
-      "dsh": ">=0.2.1-rc.5 <0.3.0-0"
+      "dsh": ">=0.2.1-rc.5 <0.3.0-0",
+      "dshReleases": {
+        "0.2.1-rc.5": "compatible",
+        "0.2.2-rc.1": "compatible"
+      }
     }
   },
   "repository": {

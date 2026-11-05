@@ -2,7 +2,7 @@
 
 > 官网 / Website: <https://dsh.zlmix.com/multiline-input/>
 
-[npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub](https://github.com/ZilongYang/dsh-multiline-input) · [Release v0.2.0](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.0) · [市场 PR #9938](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938)
+[npm](https://www.npmjs.com/package/dsh-multiline-input) · [GitHub](https://github.com/ZilongYang/dsh-multiline-input) · [Release v0.2.1](https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.1) · [市场 PR #9938](https://github.com/awesome-dsh-plugin/awesome-dsh-plugin/pull/9938)
 
 把 DeepSeek Harness 的对话输入框在**单行 / 多行**之间切换的 Web 客户端插件。
 
@@ -104,30 +104,33 @@ tab 实时跟随当前生效的组合；把绑定清空后只显示「多行输�
 插件遵守 DSH 的第三方客户端插件契约（`dsh.client` + `dsh.bundle.patch`），Host 半只保留一个可安装 / 启停的 bundle row，功能全部在 `client.js`：
 
 - **模式状态**：模块级 store + `localStorage['dsh-multiline-input.mode.v1']`，投影为 `<html data-dsh-multiline-input="multi">`；
-- **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input][contenteditable="true"]` 设 `min-height: calc(4 * 1lh + 8px)`，不碰 DSH 的滚动上限；
+- **高度**：一条 CSS 规则给 `[data-composer-card] [data-composer-input]` 设 `min-height: calc(4 * 1lh + 8px)`（`@supports` 回退到 `104px`），不碰 DSH 的滚动上限；选择器同时匹配 `contenteditable="true"` 与**只读提交相位**（`data-phase` 不是 `plain` 时，如 0.2.2 的 `sending`）——0.2.2 起普通消息在等待 Host 接受期间编辑器是 `contenteditable="false"`，只匹配前者会让高度在每次发送时塌回宿主的 36px 再弹回；
 - **tab 提示**：注册到 `conversation.input.dock` 座位（`order: 1000`，排在 todo 0 / 额度横条 5 / 目标条 10 / 队列 20 之后），成为输入卡片正上方**独立的一行**：展开 24px、收起 8px，宽度与卡片同列、tab 右对齐到卡片右边缘；`margin-bottom` 吃掉栈的行距（dock 态 6px、hero 态 8px，运行时按实际 `row-gap` 同步），让 tab 底边与卡片上沿齐平、视觉上仍是「卡片肩上的 tab」，但因为占位而**不可能压到任何上方卡片**；收起态靠同一行 8px 高度 + 抵消行距把输入区回收约 16px。
 - 旧实现走 `conversation.input.overlay` 浮层（`bottom: 100%` + `z-index: 2`），会盖住目标条右侧的文案与暂停 / 编辑 / 清除按钮；
-- **输入历史**：轮询 `useInput(s => s.phase/draft)` 与 `useSession(s => s.pendingSubmissions)`。rc.5 / rc.3 的提交回显是**乐观**的（提交时出现、失败时移除并回填草稿），所以提交时先记下草稿、待回显退休时若草稿没有回填才写入 `localStorage`；0.2.2-alpha 起存在 `sending` 冻结相位，则直接用冻结草稿 + 接受回显，更精确。浏览时通过公开的 `inputActions.setDraft()` 替换草稿（`setDraft` 会合并进撤销历史），方向键手势仍在 document 捕获阶段接管。已核对桌面版 0.2.1-rc.5 的构建 bundle：只有 `adjudicating` / `submitting`，没有 `sending` 相位，故运行版实际走乐观回显兜底。
+- **输入历史**：轮询 `useInput(s => s.phase/draft)` 与 `useSession(s => s.pendingSubmissions)`。0.2.2-rc.1 起普通消息走 `sending` 冻结相位（草稿冻结、编辑器只读、Host 接受后 `pendingSubmissions` 增长才清空），所以提交时先捕获冻结草稿、待回显出现时写入 `localStorage`；0.2.1-rc.5 / rc.3 没有 `sending`，回显是乐观的（提交时出现、失败时移除并回填草稿），走「捕获草稿 → 回显退休且草稿未回填才写入」的兜底路径。两条路径由「是否见过 `sending`」在运行时选定，失败 / 被拒的提交都不入历史。浏览时通过公开的 `inputActions.setDraft()` 替换草稿（`setDraft` 会合并进撤销历史），方向键手势仍在 document 捕获阶段接管。带引用（quote）发送时，引用会以 Markdown 块引用文本进入草稿字符串，因此同样被记入历史；召回时 `setDraft` 只写纯文本，引用 chip 不会复原。
 - **Enter / Shift+Enter**：在 document 捕获阶段拦下多行模式下的 `Enter`，向编辑器重放一个翻转了 `shiftKey` 的合成按键——仍由 DSH 自己的 composer keymap 决定「换行」还是「提交」，撤销历史、输入法保护、busy-enter（queue/steer）、菜单仲裁全部保持原逻辑；
 - **快捷键**：通过 `ctx.shortcuts.register()` 注册命令，编辑与持久化完全交给 DSH。
 
-源码依据（DSH `0.2.1-rc.5`，commit `31cfe2aafe`）：
+源码依据（DSH `0.2.2-rc.1`，commit `66491b05`；`0.2.1-rc.5` 契约同读于 `b830ec95`）：
 
 | 契约 | 源码文件 |
 |---|---|
 | 输入卡片 / 覆盖层锚点 | `packages/client/ui-conversation/src/client/skeleton/InputBar.tsx`、`InputBar.module.css` |
 | composer 卡片栈（`conversation.input.dock`） | `packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx`、`ConversationRoot.module.css` |
-| 可编辑面 / 占位符 | `packages/client/ui-conversation/src/client/input/editor/DraftEditor.tsx`、`ComposerContentEditable.tsx` |
+| 可编辑面 / 提交相位 | `packages/client/ui-conversation/src/client/input/editor/DraftEditor.tsx`、`ComposerContentEditable.tsx`、`input/machine.ts` |
 | Enter 语义 | `packages/client/ui-conversation/src/client/input/editor/keymap.ts` |
+| 引用（quote）投影 | `packages/client/ui-conversation/src/client/input/editor/QuoteNode.tsx`、`input/editor/projection.ts` |
 | 公开输入动作面 | `packages/client/ui-conversation/src/client/contract/input.ts` |
 | 座位与标准 props | `packages/client/ui-conversation/src/client/contract/slots.ts`、`packages/extensions/cordis-client-runner/src/client/slot-catalog.ts` |
+| 触发菜单锚点 | `packages/client/ui-input-trigger/src/client/MenuView.tsx`（`data-trigger-menu` + 内部 `role="listbox"`） |
 | 快捷键命令契约 | `packages/client/shortcuts/src/client/types.ts`、`binding.ts` |
 | 客户端清单 | `packages/util/package-manifest/src/types.ts`、`packages/client/modules/README.zh.md` |
 
 ## 兼容性
 
-- 在 DSH **0.2.1-rc.5**（桌面版 / Web）验证；`dsh.compatibility.dsh` = `>=0.2.1-rc.5 <0.3.0-0`。
-- 依赖 composer 的 `data-*` 锚点与 `role="listbox"`，属 DSH 内部实现；升级 DSH 后需要回归（锚点缺失时插件只 warn，不会崩）。
+- `engines.dsh` 与 `dsh.compatibility.dsh` 均为 `>=0.2.1-rc.5 <0.3.0-0`（装前门禁；DSH 的判定带 `includePrerelease`，所以 0.2.2-rc.1 这类预发布版本能过）。`dsh.compatibility.dshReleases` 逐版本标注 `0.2.1-rc.5`、`0.2.2-rc.1` 为 compatible。
+- 已在本机 DSH 桌面版 **0.2.2-rc.1** 上核对并运行；0.2.1-rc.5 为上一基线（`sending` 相位不存在，走乐观回显兜底）。0.2.1-rc.3 及更早版本不在支持范围内。
+- 依赖 composer 的 `data-*` 锚点、`data-phase` 与菜单的 `data-trigger-menu` / `role="listbox"`，属 DSH 内部实现；升级 DSH 后需要回归（锚点缺失时插件只 warn，不会崩）。**其中 `contenteditable` 也是契约的一部分**：0.2.2 让编辑器在 `sending` 期间变成 `contenteditable="false"`，任何只按 `[contenteditable="true"]` 定位的样式都会在发送时失效。
 - tab 行的宽度与右对齐复用了 DSH 布局变量 `--dsh-composer-card-max-width` / `--dsh-composer-side-clearance`（都带兜底值），若 DSH 改了输入区宽度算法，tab 会与卡片右边缘错开几像素。
 - Web + Linux 没有默认快捷键（DSH 对 Web 可选组合有白名单限制），需在设置里自行指定。
 
@@ -142,7 +145,7 @@ dsh-multiline-input/
 ├── icon.svg / assets/      # 插件图标与市场截图
 ├── locale/{zh,en}.json     # 插件展示元数据
 ├── test/                   # node --test
-└── docs/                   # 计划、发版清单
+└── docs/                   # 计划、发版清单、兼容性核查
 ```
 
 - 测试：`npm test`（`node --test`，当前 29 条用例）。
@@ -170,19 +173,23 @@ dsh-multiline-input/
 ## 已知限制
 
 - 仅作用于 Web GUI（桌面版与浏览器），TUI / CLI 不适用。
-- 多行起始高度是代码常量 4 行，暂不提供配置项（0.2.1 计划改为 Host Config）。
+- 多行起始高度是代码常量 4 行，暂不提供配置项（后续版本计划改为 Host Config）。
 - 输入历史是设备本地 `localStorage` 明文（全局一份），可能包含敏感内容；用「设置 → 快捷键 → 清空输入历史」清空。多窗口之间不做实时同步。
-- rc.5 在提交时即记录，因此失败 / 被拒的消息也会留在历史里；0.2.2-alpha 的 `sending` 路径在接受时记录。
-- 0.2.0 在 DSH 0.2.1-rc.5 验证（`sending` 相位是 0.2.2-alpha 才有的，rc.5/rc.3 用乐观回显 + 失败草稿回填判定，已按同一 `pendingSubmissions` 契约核对）；rc.3 上收起与方向键同样可用。
+- 0.2.1-rc.5 及更早没有 `sending` 相位，走乐观回显兜底：失败 / 被拒的消息也可能留在历史里；0.2.2+ 的 `sending` 路径只在 Host 接受后记录。
+- 带引用（quote）发送时，历史里记下的是 Markdown 块引用文本；`↑` 召回通过 `setDraft()` 写回纯文本，引用 chip 不会复原（DSH 的公开写入口只接受字符串）。
+- 多行高度依赖 `contenteditable` 与 `data-phase` 两个 DOM 事实；0.2.2 在 `sending` 期间把编辑器置为只读，选择器必须同时覆盖只读相位，否则发送时高度会塌陷（0.2.1 已修）。
+- 0.2.1 在 DSH **0.2.2-rc.1**（桌面版）验证，0.2.0 的基线是 0.2.1-rc.5；0.2.1-rc.3 及更早版本不在支持范围。
 - tab 行展开态占输入框上方 24px（输入区比没有 tab 时高约 18px，24px 行高抵掉 6px 栈间距）；收起态 8px（净高约 2px），输入区回收约 16px。
 - hero（空会话）状态下栈行距是 8px，tab 行会按运行时读到的实际 `row-gap` 自适应，视觉上与 dock 态一致。
 - 若默认键位与其它插件的命令默认值冲突，插件会降级为「点击 tab 切换」并在控制台输出一次警告。
 
 ## 文档
 
+- [实施计划（2026-11-05，DSH 0.2.2-rc.1 兼容修复）](docs/PLAN-2026-11-05.md)
 - [实施计划（2026-10-30）](docs/PLAN-2026-10-30.md)
 - [实施计划（2026-10-27）](docs/PLAN-2026-10-27.md)
-- 发版检查清单：[0.2.0](docs/RELEASE-CHECKLIST-0.2.0.md)、[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
+- [DSH 0.2.2-rc.1 兼容性核查](docs/COMPAT-2026-11-05-dsh-0.2.2-rc.1.md)
+- 发版检查清单：[0.2.1](docs/RELEASE-CHECKLIST-0.2.1.md)、[0.2.0](docs/RELEASE-CHECKLIST-0.2.0.md)、[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - [路线图](ROADMAP.md)
 - [变更记录](CHANGELOG.md)
 
