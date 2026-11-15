@@ -377,8 +377,15 @@ test('the Plugins page configuration renders the summary and sections', () => {
     historyStore: store([{ text: 'a', at: 1 }]),
     hintStore: store('expanded'),
     shortcutStore: store('Cmd+E'),
+    linesStore: store(4),
+    defaultModeStore: store('single'),
+    sessionMemoryStore: store(false),
     clearHistory: () => {},
     setCollapsed: () => {},
+    setLines: () => {},
+    setDefaultMode: () => {},
+    setSessionMemory: () => {},
+    clearSessions: () => {},
   }
   assert.equal(t.MultiLineSettings({ ...props, view: 'summary' }), 'settingsSummary')
   const tree = t.MultiLineSettingsBody(props)
@@ -388,9 +395,36 @@ test('the Plugins page configuration renders the summary and sections', () => {
   assert.equal(t.SETTINGS_SECTION_SLOT, 'settings.section')
   assert.equal(t.SETTINGS_SECTION_ID, 'multiline-input')
   assert.ok(t.SETTINGS_SECTION_ORDER > 20)
-  assert.equal(tree.children.length, 3)
+  // shortcut, starting lines, default mode, per-session memory, history, hint
+  assert.equal(tree.children.length, 6)
   assert.equal(tree.children[0].props.className, 'dmi-settings-section')
   assert.equal(tree.children[0].children[0].children[0].props.className, 'dmi-settings-title')
+  // The floor and the default mode are segmented choices; the selected one is marked.
+  const lines = tree.children[1]
+  assert.equal(lines.children[0].children[0].children[0], 'settingsLines')
+  const choices = lines.children[2]
+  assert.equal(choices.props.className, 'dmi-settings-choices')
+  const choiceItems = choices.children.flat()
+  assert.equal(choiceItems.length, 3)
+  assert.deepEqual(choiceItems.map((item) => item.props['aria-pressed']), [false, true, false])
+  assert.match(choiceItems[1].props.className, /dmi-settings-choice-active/)
+  const mode = tree.children[2]
+  assert.equal(mode.children[0].children[0].children[0], 'settingsMode')
+  assert.equal(mode.children[2].children[0].props['aria-pressed'], true)
+  assert.equal(mode.children[2].children[1].props['aria-pressed'], false)
+  // Per-session memory is a switch, off by default; the clear action only shows when on.
+  const session = tree.children[3]
+  assert.equal(session.children[0].children[0].children[0], 'settingsSession')
+  const toggle = session.children[2]
+  assert.equal(toggle.props.role, 'switch')
+  assert.equal(toggle.props['aria-checked'], false)
+  assert.equal(toggle.props.className, 'dmi-switch')
+  assert.equal(toggle.children.length, 2)
+  assert.equal(toggle.children[0].props.className, 'dmi-switch-track')
+  assert.equal(toggle.children[1].children[0], 'settingsSessionOff')
+  assert.equal(session.children[3], false)
+  // With the switch off the mode section explains the shared scope instead.
+  assert.equal(mode.children[1].children[0], 'settingsModeDescriptionGlobal')
   assert.equal(t.SETTINGS_SLOT, 'plugins.row.config')
   assert.equal(t.SETTINGS_KEY, 'dsh-multiline-input#multiline-input')
   assert.equal(t.openSettingsPanel(), false)
@@ -407,8 +441,8 @@ test('the multi-line floor covers the read-only submit phases', () => {
   // The main rule and the `@supports not (height: 1lh)` fallback both carry it.
   const occurrences = t.CSS.split(t.FLOOR_SELECTOR).length - 1
   assert.equal(occurrences, 2)
-  assert.match(t.CSS, /min-height: calc\(4 \* 1lh \+ 8px\);/)
-  assert.match(t.CSS, /min-height: 104px;/)
+  assert.match(t.CSS, /min-height: calc\(var\(--dmi-min-lines, 4\) \* 1lh \+ 8px\);/)
+  assert.match(t.CSS, /min-height: calc\(var\(--dmi-min-lines, 4\) \* 24px \+ 8px\);/)
   // The old contenteditable-only floor selector is gone.
   assert.doesNotMatch(t.CSS, /\[data-composer-input\]\[contenteditable="true"\] \{/)
 })
@@ -418,4 +452,151 @@ test('the trigger menu is detected through both anchors', () => {
   // carry `role="listbox"` inside the composer overlay.
   assert.match(t.TRIGGER_MENU, /data-trigger-menu/)
   assert.match(t.TRIGGER_MENU, /role="listbox"/)
+})
+
+test('all eight locale packs share one key set with intact placeholders', () => {
+  // DSH 0.2.2 ships de / en / es / fr / ja / pt / ru / zh; a missing pack falls
+  // back to English, so every pack must be complete rather than partial.
+  assert.deepEqual(Object.keys(t.DICT).sort(), ['de', 'en', 'es', 'fr', 'ja', 'pt', 'ru', 'zh'])
+  const reference = Object.keys(t.DICT.en).sort()
+  const placeholders = (text) => (text.match(/\{[a-z]+\}/g) ?? []).sort()
+  for (const [name, dict] of Object.entries(t.DICT)) {
+    assert.deepEqual(Object.keys(dict).sort(), reference, `${name} keys differ`)
+    for (const [key, value] of Object.entries(dict)) {
+      assert.equal(typeof value, 'string', `${name}.${key} is not a string`)
+      assert.notEqual(value.trim(), '', `${name}.${key} is blank`)
+    }
+  }
+  for (const key of ['settingsLinesOption', 'settingsCurrentKeys', 'settingsHistoryCount', 'historyPosition', 'ariaLabel']) {
+    for (const [name, dict] of Object.entries(t.DICT)) {
+      assert.deepEqual(placeholders(dict[key]), placeholders(t.DICT.en[key]), `${name}.${key} placeholders`)
+    }
+  }
+})
+
+test('the multi-line floor accepts exactly 3, 4, or 5 lines', () => {
+  assert.deepEqual(t.MIN_LINES_VALUES, [3, 4, 5])
+  assert.equal(t.normalizeLines(3), 3)
+  assert.equal(t.normalizeLines('5'), 5)
+  assert.equal(t.normalizeLines(4), 4)
+  for (const value of [2, 6, 7, 0, -1, 3.5, 'abc', '', null, undefined, true]) {
+    assert.equal(t.normalizeLines(value), t.MIN_LINES, `${String(value)} does not clamp to the default`)
+  }
+})
+
+test('readLines/writeLines persist the floor and swallow storage failures', () => {
+  const store = storageStub({})
+  assert.equal(t.readLines(store), t.MIN_LINES)
+  t.writeLines(store, 5)
+  assert.equal(store.values.get(t.LINES_STORAGE_KEY), '5')
+  assert.equal(t.readLines(store), 5)
+  t.writeLines(store, 9)
+  assert.equal(t.readLines(store), t.MIN_LINES)
+  const blocked = storageStub({}, { throws: true })
+  assert.equal(t.readLines(blocked), t.MIN_LINES)
+  assert.doesNotThrow(() => t.writeLines(blocked, 3))
+})
+
+test('applyLines writes the custom property the CSS rule multiplies', () => {
+  const written = {}
+  const element = { style: { setProperty: (name, value) => { written[name] = value } } }
+  t.applyLines(element, 5)
+  assert.equal(written[t.LINES_PROPERTY], '5')
+  t.applyLines(element, 9)
+  assert.equal(written[t.LINES_PROPERTY], String(t.MIN_LINES))
+  // Non-DOM hosts and element stubs without a style object stay silent.
+  assert.doesNotThrow(() => t.applyLines(null, 5))
+  assert.doesNotThrow(() => t.applyLines(undefined, 5))
+  assert.doesNotThrow(() => t.applyLines({}, 5))
+})
+
+test('per-session modes remember one session each and trim the oldest', () => {
+  let doc = t.emptySessionModes()
+  assert.equal(doc.version, 1)
+  assert.deepEqual(doc.sessions, [])
+  assert.equal(t.sessionModeOf(doc, 's1'), null)
+
+  doc = t.withSessionMode(doc, 's1', 'multi')
+  doc = t.withSessionMode(doc, 's2', 'single')
+  assert.equal(t.sessionModeOf(doc, 's1'), 'multi')
+  assert.equal(t.sessionModeOf(doc, 's2'), 'single')
+  assert.equal(t.sessionModeOf(doc, 's3'), null)
+
+  // Re-writing a session keeps one entry and moves it to the most-recent end.
+  doc = t.withSessionMode(doc, 's1', 'single')
+  assert.deepEqual(doc.sessions.map((item) => item.id), ['s2', 's1'])
+  assert.equal(t.sessionModeOf(doc, 's1'), 'single')
+
+  // Blank ids and damaged documents never invent an entry.
+  assert.deepEqual(t.withSessionMode(doc, '', 'multi'), doc)
+  assert.deepEqual(t.withSessionMode(doc, undefined, 'multi'), doc)
+  assert.deepEqual(t.sanitizeSessionModes({ version: 99, sessions: [{ id: 's1', mode: 'multi' }] }), t.emptySessionModes())
+  assert.deepEqual(t.sanitizeSessionModes(null), t.emptySessionModes())
+  assert.deepEqual(t.sanitizeSessionModes({ version: 1, sessions: 'nope' }), t.emptySessionModes())
+  assert.deepEqual(
+    t.sanitizeSessionModes({ version: 1, sessions: [{ id: 's1', mode: 'multi' }, { id: 's1', mode: 'single' }, { id: ' ', mode: 'multi' }, { id: 's2', mode: 'weird' }, null] }).sessions,
+    [{ id: 's1', mode: 'multi' }],
+  )
+
+  // The LRU keeps the newest entries and drops the oldest first.
+  let many = t.emptySessionModes()
+  const total = t.SESSION_MODE_MAX_ENTRIES + 5
+  for (let index = 0; index < total; index += 1) many = t.withSessionMode(many, `s${index}`, 'multi')
+  assert.equal(many.sessions.length, t.SESSION_MODE_MAX_ENTRIES)
+  assert.equal(t.sessionModeOf(many, 's0'), null)
+  assert.equal(t.sessionModeOf(many, `s${total - 1}`), 'multi')
+})
+
+test('readSessionModes/writeSessionModes round-trip and degrade safely', () => {
+  const store = storageStub({})
+  assert.deepEqual(t.readSessionModes(store), t.emptySessionModes())
+  t.writeSessionModes(store, t.withSessionMode(t.emptySessionModes(), 's1', 'multi'))
+  assert.equal(t.readSessionModes(store).sessions.length, 1)
+  assert.equal(t.sessionModeOf(t.readSessionModes(store), 's1'), 'multi')
+
+  const blocked = storageStub({}, { throws: true })
+  assert.deepEqual(t.readSessionModes(blocked), t.emptySessionModes())
+  assert.doesNotThrow(() => t.writeSessionModes(blocked, t.emptySessionModes()))
+
+  const damaged = storageStub({ [t.SESSION_MODE_STORAGE_KEY]: 'not json' })
+  assert.deepEqual(t.readSessionModes(damaged), t.emptySessionModes())
+
+  const legacy = storageStub({ [t.SESSION_MODE_STORAGE_KEY]: JSON.stringify({ version: 2, sessions: [] }) })
+  assert.deepEqual(t.readSessionModes(legacy), t.emptySessionModes())
+})
+
+test('per-session memory is a switch that defaults to the shared mode', () => {
+  // Off is the default: one device-wide mode, exactly like 0.2.1.
+  const store = storageStub({})
+  assert.equal(t.readSessionMemory(store), false)
+  assert.equal(t.normalizeSessionMemory(undefined), false)
+  assert.equal(t.normalizeSessionMemory('off'), false)
+  assert.equal(t.normalizeSessionMemory('on'), true)
+  assert.equal(t.normalizeSessionMemory('ON'), false)
+
+  t.writeSessionMemory(store, true)
+  assert.equal(store.values.get(t.SESSION_MEMORY_STORAGE_KEY), t.SESSION_MEMORY_ON)
+  assert.equal(t.readSessionMemory(store), true)
+  t.writeSessionMemory(store, false)
+  assert.equal(store.values.get(t.SESSION_MEMORY_STORAGE_KEY), t.SESSION_MEMORY_OFF)
+  assert.equal(t.readSessionMemory(store), false)
+
+  const blocked = storageStub({}, { throws: true })
+  assert.equal(t.readSessionMemory(blocked), false)
+  assert.doesNotThrow(() => t.writeSessionMemory(blocked, true))
+})
+
+test('resolveSessionMode only consults overrides while the switch is on', () => {
+  const doc = t.withSessionMode(t.withSessionMode(t.emptySessionModes(), 's1', 'multi'), 's2', 'single')
+  // Off: every session follows the shared default.
+  assert.equal(t.resolveSessionMode(doc, false, 's1', 'single'), 'single')
+  assert.equal(t.resolveSessionMode(doc, false, 's2', 'multi'), 'multi')
+  assert.equal(t.resolveSessionMode(doc, false, 's3', 'multi'), 'multi')
+  // On: the session's own mode wins, unknown sessions fall back.
+  assert.equal(t.resolveSessionMode(doc, true, 's1', 'single'), 'multi')
+  assert.equal(t.resolveSessionMode(doc, true, 's2', 'multi'), 'single')
+  assert.equal(t.resolveSessionMode(doc, true, 's3', 'single'), 'single')
+  assert.equal(t.resolveSessionMode(doc, true, null, 'multi'), 'multi')
+  // The fallback itself is normalized.
+  assert.equal(t.resolveSessionMode(doc, false, 's1', 'nonsense'), 'single')
 })

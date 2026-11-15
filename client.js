@@ -15,14 +15,18 @@
  *     (single line) or Shift+↑ / Shift+↓ (multi line). On DSH 0.2.2+ the text
  *     is captured from the frozen `sending` draft and only committed once the
  *     Host accepts it (`pendingSubmissions` grows); hosts without that phase
- *     (0.2.1-rc.5 / rc.3) fall back to the optimistic echo and a failed-send
- *     draft confirmation. Failed sends never enter the history;
- *   - a taller composer floor in multi-line mode, driven by
- *     `<html data-dsh-multiline-input="multi">` and one CSS rule. The floor
+ *     (0.2.1-rc.5 and earlier) fall back to the optimistic echo and a
+ *     failed-send draft confirmation. Failed sends never enter the history;
+ *   - a configurable 3–5 line composer floor in multi-line mode (device-local,
+ *     default 4), driven by `<html data-dsh-multiline-input="multi">`, the
+ *     `--dmi-min-lines` custom property, and one CSS rule. The floor
  *     also covers the read-only submit phases (`sending` and the command
  *     phases): 0.2.2 makes the editor `contenteditable="false"` while a
  *     message waits for the Host, and a `contenteditable="true"`-only
  *     selector would drop the floor and collapse the composer on every send;
+ *   - a per-session mode memory: the stored mode is the default for new
+ *     sessions, and a session the user toggled keeps its own mode in a
+ *     device-local LRU map, so leaving and reopening it restores that choice;
  *   - Enter / Shift+Enter swapped in multi-line mode by re-dispatching the
  *     same keydown with the opposite `shiftKey`. DSH's own composer keymap
  *     keeps deciding newline vs submit, so undo history, the IME guard,
@@ -33,7 +37,9 @@
  * module table; no Harness Client package is imported.
  *
  * Reference contracts (source checkout, 0.2.2-rc.1, commit 66491b05; the
- * 0.2.1-rc.5 contracts were re-read at commit b830ec95):
+ * 0.2.1-rc.5 contracts were re-read at commit b830ec95; every anchor below was
+ * re-verified against the installed 0.2.2-rc.3 build on 2026-11-15 — see
+ * docs/COMPAT-2026-11-15-dsh-0.2.2-rc.3.md):
  *   - packages/client/ui-conversation/src/client/skeleton/InputBar.tsx
  *     (`machineBusy` now includes `sending`, so ordinary sends are read-only)
  *   - packages/client/ui-conversation/src/client/skeleton/ConversationContent.tsx
@@ -69,6 +75,22 @@ window.__ModuleLoader__.load({
 
     /** Device-local mode preference; the mode itself is not Session data. */
     const MODE_STORAGE_KEY = 'dsh-multiline-input.mode.v1'
+    /**
+     * Device-local per-session overrides. The key above stays the default for
+     * new sessions; a session that was toggled keeps its own mode here.
+     */
+    const SESSION_MODE_STORAGE_KEY = 'dsh-multiline-input.session-mode.v1'
+    /**
+     * Device-local scope switch: `off` (default) shares one mode across every
+     * session, `on` keeps the per-session overrides above. Global is the
+     * default because a mode that silently changes per session muddles the
+     * user's expectation of one shared composer state.
+     */
+    const SESSION_MEMORY_STORAGE_KEY = 'dsh-multiline-input.session-memory.v1'
+    const SESSION_MEMORY_ON = 'on'
+    const SESSION_MEMORY_OFF = 'off'
+    const SESSION_MODE_VERSION = 1
+    const SESSION_MODE_MAX_ENTRIES = 40
     /** `<html>` marker read by the height rule. */
     const MODE_ATTRIBUTE = 'data-dsh-multiline-input'
     /** Device-local hint posture: collapsed line or the full tab. */
@@ -106,8 +128,14 @@ window.__ModuleLoader__.load({
     const SETTINGS_SECTION_SLOT = 'settings.section'
     const SETTINGS_SECTION_ID = 'multiline-input'
     const SETTINGS_SECTION_ORDER = 30
-    /** Multi-line floor in text lines (the requested 3–5 range). */
+    /** Default multi-line floor in text lines (the accepted 3–5 range). */
     const MIN_LINES = 4
+    /** The floors the settings page offers; anything else is normalized away. */
+    const MIN_LINES_VALUES = [3, 4, 5]
+    /** Device-local floor preference, read by the CSS rule as a bare number. */
+    const LINES_STORAGE_KEY = 'dsh-multiline-input.lines.v1'
+    /** `<html>` custom property the floor rule multiplies. */
+    const LINES_PROPERTY = '--dmi-min-lines'
     /**
      * Multi-line floor selector. `contenteditable="true"` covers the editable
      * composer; every non-plain phase is the read-only submit plane (0.2.2
@@ -150,7 +178,7 @@ window.__ModuleLoader__.load({
         historyTitle: '↑/↓ 浏览输入历史，Esc 还原草稿',
         clearHistoryLabel: '清空输入历史',
         settingsSectionLabel: '多行输入',
-        settingsSummary: '收起提示、输入历史与快捷键',
+        settingsSummary: '收起提示、起始行数、输入历史与快捷键',
         settingsShortcut: '快捷键',
         settingsShortcutDescription: '在系统设置里修改「切换多行输入」的键位。',
         settingsShortcutPath: '设置 → 通用 → 快捷键 → 切换多行输入',
@@ -170,6 +198,20 @@ window.__ModuleLoader__.load({
         settingsCollapseNow: '收起提示',
         settingsExpandNow: '展开提示',
         ariaLabel: '{action}（{keys}）',
+        settingsLines: '起始行数',
+        settingsLinesDescription: '多行模式下输入框的最小高度；内容变多会继续长高。',
+        settingsLinesOption: '{lines} 行',
+        settingsMode: '默认模式',
+        settingsModeDescription: '新会话从这里开始；已切换过的会话各自记住自己的模式。',
+        settingsModeDescriptionGlobal: '所有会话共用这个模式；在输入框上切换会直接改它。',
+        settingsModeSingle: '单行',
+        settingsModeMulti: '多行',
+        settingsSession: '按会话记忆',
+        settingsSessionDescription: '开启后每个会话单独记住自己的单行 / 多行切换；关闭则所有会话共用一个模式。',
+        settingsSessionOff: '关闭',
+        settingsSessionOn: '开启',
+        settingsSessionClear: '清除所有会话记忆',
+        settingsSessionCleared: '已清除。',
       },
       en: {
         toMulti: 'Multiline input',
@@ -185,7 +227,7 @@ window.__ModuleLoader__.load({
         historyTitle: '↑/↓ browse input history; Esc restores the draft',
         clearHistoryLabel: 'Clear input history',
         settingsSectionLabel: 'Multiline input',
-        settingsSummary: 'Collapsible hint, input history, and shortcut',
+        settingsSummary: 'Collapsible hint, starting lines, input history, and shortcut',
         settingsShortcut: 'Shortcut',
         settingsShortcutDescription: 'Change the “Toggle multiline input” binding in Settings.',
         settingsShortcutPath: 'Settings → General → Keyboard shortcuts → Toggle multiline input',
@@ -205,6 +247,314 @@ window.__ModuleLoader__.load({
         settingsCollapseNow: 'Collapse hint',
         settingsExpandNow: 'Show hint',
         ariaLabel: '{action} ({keys})',
+        settingsLines: 'Starting lines',
+        settingsLinesDescription: 'Minimum composer height in multiline mode; longer drafts keep growing.',
+        settingsLinesOption: '{lines} lines',
+        settingsMode: 'Default mode',
+        settingsModeDescription: 'New sessions start here; a session you switched keeps its own mode.',
+        settingsModeDescriptionGlobal: 'Every session shares this mode; switching in the composer changes it directly.',
+        settingsModeSingle: 'Single line',
+        settingsModeMulti: 'Multiline',
+        settingsSession: 'Per-session memory',
+        settingsSessionDescription: 'On: each session keeps its own single-line / multiline switch. Off: every session shares one mode.',
+        settingsSessionOff: 'Off',
+        settingsSessionOn: 'On',
+        settingsSessionClear: 'Clear per-session memory',
+        settingsSessionCleared: 'Cleared.',
+      },
+      ja: {
+        toMulti: '複数行入力',
+        toSingle: '1 行入力',
+        submitHint: 'Shift+Enter で送信',
+        toggleLabel: '複数行入力の切り替え',
+        hintTitle: 'クリックで入力モードを切り替えます。ショートカットは「設定 → 一般 → キーボードショートカット」で変更できます。',
+        collapseHint: 'ヒントを隠す',
+        collapseHintTitle: '入力ヒントを隠す',
+        expandHint: '入力ヒントを表示',
+        expandHintTitle: '入力ヒントを表示（ショートカットは引き続き使えます）',
+        historyPosition: '履歴 {index}/{total}',
+        historyTitle: '↑/↓ で入力履歴を参照、Esc で下書きに戻る',
+        clearHistoryLabel: '入力履歴を消去',
+        settingsSectionLabel: '複数行入力',
+        settingsSummary: 'ヒントの折りたたみ、開始行数、入力履歴、ショートカット',
+        settingsShortcut: 'ショートカット',
+        settingsShortcutDescription: '「複数行入力の切り替え」のキーは設定で変更できます。',
+        settingsShortcutPath: '設定 → 一般 → キーボードショートカット → 複数行入力の切り替え',
+        settingsOpenShortcuts: '設定を開く',
+        settingsOpenShortcutsDone: '設定を開きました。「一般 → キーボードショートカット」で変更してください。',
+        settingsOpenShortcutsFailed: '「設定 → 一般 → キーボードショートカット」を手動で開いてください。',
+        settingsCurrentKeys: '現在のキー：{keys}',
+        settingsUnbound: '未割り当て',
+        settingsHistory: '入力履歴',
+        settingsHistoryEmpty: 'まだ記録がありません。',
+        settingsHistoryCount: '{count} 件記録済み（このデバイスのみ、最大 200 件）。',
+        settingsClearHistory: '入力履歴を消去',
+        settingsClearConfirm: '本当に消去しますか？',
+        settingsCleared: '消去しました。',
+        settingsHint: 'ヒントタブ',
+        settingsHintDescription: '折りたたむと入力欄が約 16px 広がります。ショートカットは使えます。',
+        settingsCollapseNow: 'ヒントを折りたたむ',
+        settingsExpandNow: 'ヒントを表示',
+        ariaLabel: '{action}（{keys}）',
+        settingsLines: '開始行数',
+        settingsLinesDescription: '複数行モードでの入力欄の最小の高さ。内容が増えるとさらに伸びます。',
+        settingsLinesOption: '{lines} 行',
+        settingsMode: '既定モード',
+        settingsModeDescription: '新しいセッションはここから始まります。切り替えたセッションはそれぞれのモードを保ちます。',
+        settingsModeDescriptionGlobal: 'すべてのセッションがこのモードを共有します。入力欄で切り替えるとここが変わります。',
+        settingsModeSingle: '1 行',
+        settingsModeMulti: '複数行',
+        settingsSession: 'セッションごとの記憶',
+        settingsSessionDescription: 'オンにすると各セッションが 1 行 / 複数行を個別に覚えます。オフなら全セッションで 1 つのモードを共有します。',
+        settingsSessionOff: 'オフ',
+        settingsSessionOn: 'オン',
+        settingsSessionClear: 'セッションごとの記憶を消去',
+        settingsSessionCleared: '消去しました。',
+      },
+      es: {
+        toMulti: 'Entrada multilínea',
+        toSingle: 'Entrada de una línea',
+        submitHint: 'Shift+Enter para enviar',
+        toggleLabel: 'Alternar entrada multilínea',
+        hintTitle: 'Haz clic para cambiar el modo de entrada. El atajo se cambia en Ajustes → General → Atajos de teclado.',
+        collapseHint: 'Ocultar la pista',
+        collapseHintTitle: 'Ocultar la pista de entrada',
+        expandHint: 'Mostrar la pista',
+        expandHintTitle: 'Mostrar la pista de entrada (el atajo sigue funcionando)',
+        historyPosition: 'Historial {index}/{total}',
+        historyTitle: '↑/↓ recorre el historial; Esc restaura el borrador',
+        clearHistoryLabel: 'Borrar el historial de entrada',
+        settingsSectionLabel: 'Entrada multilínea',
+        settingsSummary: 'Pista plegable, líneas iniciales, historial y atajo',
+        settingsShortcut: 'Atajo',
+        settingsShortcutDescription: 'Cambia la combinación de «Alternar entrada multilínea» en Ajustes.',
+        settingsShortcutPath: 'Ajustes → General → Atajos de teclado → Alternar entrada multilínea',
+        settingsOpenShortcuts: 'Abrir Ajustes',
+        settingsOpenShortcutsDone: 'Ajustes está abierto; ve a General → Atajos de teclado para cambiarlo.',
+        settingsOpenShortcutsFailed: 'Abre Ajustes → General → Atajos de teclado manualmente.',
+        settingsCurrentKeys: 'Combinación actual: {keys}',
+        settingsUnbound: 'Sin asignar',
+        settingsHistory: 'Historial de entrada',
+        settingsHistoryEmpty: 'Aún no hay nada registrado.',
+        settingsHistoryCount: '{count} mensajes registrados (solo en este dispositivo, hasta 200).',
+        settingsClearHistory: 'Borrar el historial de entrada',
+        settingsClearConfirm: '¿Borrar de verdad?',
+        settingsCleared: 'Borrado.',
+        settingsHint: 'Pestaña de la pista',
+        settingsHintDescription: 'Al plegarla, el compositor recupera unos 16 px; el atajo sigue funcionando.',
+        settingsCollapseNow: 'Plegar la pista',
+        settingsExpandNow: 'Mostrar la pista',
+        ariaLabel: '{action} ({keys})',
+        settingsLines: 'Líneas iniciales',
+        settingsLinesDescription: 'Altura mínima del compositor en modo multilínea; los borradores largos siguen creciendo.',
+        settingsLinesOption: '{lines} líneas',
+        settingsMode: 'Modo predeterminado',
+        settingsModeDescription: 'Las sesiones nuevas empiezan aquí; una sesión en la que cambiaste conserva su propio modo.',
+        settingsModeDescriptionGlobal: 'Todas las sesiones comparten este modo; cambiarlo en el compositor lo modifica aquí.',
+        settingsModeSingle: 'Una línea',
+        settingsModeMulti: 'Multilínea',
+        settingsSession: 'Memoria por sesión',
+        settingsSessionDescription: 'Activado: cada sesión recuerda su propio cambio entre una línea y multilínea. Desactivado: todas comparten un modo.',
+        settingsSessionOff: 'Desactivado',
+        settingsSessionOn: 'Activado',
+        settingsSessionClear: 'Borrar la memoria por sesión',
+        settingsSessionCleared: 'Borrada.',
+      },
+      fr: {
+        toMulti: 'Saisie multiligne',
+        toSingle: 'Saisie sur une ligne',
+        submitHint: 'Maj+Entrée pour envoyer',
+        toggleLabel: 'Basculer la saisie multiligne',
+        hintTitle: 'Cliquez pour changer de mode de saisie. Le raccourci se règle dans Réglages → Général → Raccourcis clavier.',
+        collapseHint: "Masquer l'indication",
+        collapseHintTitle: "Masquer l'indication de saisie",
+        expandHint: "Afficher l'indication",
+        expandHintTitle: "Afficher l'indication (le raccourci reste actif)",
+        historyPosition: 'Historique {index}/{total}',
+        historyTitle: "↑/↓ parcourt l'historique ; Échap restaure le brouillon",
+        clearHistoryLabel: "Effacer l'historique de saisie",
+        settingsSectionLabel: 'Saisie multiligne',
+        settingsSummary: 'Indication repliable, lignes initiales, historique et raccourci',
+        settingsShortcut: 'Raccourci',
+        settingsShortcutDescription: 'Modifiez la combinaison « Basculer la saisie multiligne » dans les Réglages.',
+        settingsShortcutPath: 'Réglages → Général → Raccourcis clavier → Basculer la saisie multiligne',
+        settingsOpenShortcuts: 'Ouvrir les Réglages',
+        settingsOpenShortcutsDone: 'Les Réglages sont ouverts ; allez dans Général → Raccourcis clavier pour modifier.',
+        settingsOpenShortcutsFailed: 'Ouvrez Réglages → Général → Raccourcis clavier manuellement.',
+        settingsCurrentKeys: 'Combinaison actuelle : {keys}',
+        settingsUnbound: 'Non attribué',
+        settingsHistory: 'Historique de saisie',
+        settingsHistoryEmpty: 'Rien d’enregistré pour le moment.',
+        settingsHistoryCount: '{count} messages enregistrés (sur cet appareil, 200 maximum).',
+        settingsClearHistory: "Effacer l'historique de saisie",
+        settingsClearConfirm: 'Confirmer l’effacement ?',
+        settingsCleared: 'Effacé.',
+        settingsHint: 'Onglet d’indication',
+        settingsHintDescription: "Repliée, l'indication rend environ 16 px au compositeur ; le raccourci reste actif.",
+        settingsCollapseNow: "Replier l'indication",
+        settingsExpandNow: "Afficher l'indication",
+        ariaLabel: '{action} ({keys})',
+        settingsLines: 'Lignes initiales',
+        settingsLinesDescription: 'Hauteur minimale du compositeur en mode multiligne ; les brouillons longs continuent de grandir.',
+        settingsLinesOption: '{lines} lignes',
+        settingsMode: 'Mode par défaut',
+        settingsModeDescription: 'Les nouvelles sessions démarrent ici ; une session où vous avez basculé garde son propre mode.',
+        settingsModeDescriptionGlobal: 'Toutes les sessions partagent ce mode ; basculer dans le compositeur le modifie ici.',
+        settingsModeSingle: 'Une ligne',
+        settingsModeMulti: 'Multiligne',
+        settingsSession: 'Mémoire par session',
+        settingsSessionDescription: 'Activé : chaque session retient son propre choix une ligne / multiligne. Désactivé : toutes partagent un seul mode.',
+        settingsSessionOff: 'Désactivé',
+        settingsSessionOn: 'Activé',
+        settingsSessionClear: 'Effacer la mémoire par session',
+        settingsSessionCleared: 'Effacée.',
+      },
+      de: {
+        toMulti: 'Mehrzeilige Eingabe',
+        toSingle: 'Einzeilige Eingabe',
+        submitHint: 'Shift+Enter zum Senden',
+        toggleLabel: 'Mehrzeilige Eingabe umschalten',
+        hintTitle: 'Klicken schaltet den Eingabemodus um. Das Tastenkürzel lässt sich unter Einstellungen → Allgemein → Tastenkürzel ändern.',
+        collapseHint: 'Hinweis ausblenden',
+        collapseHintTitle: 'Eingabehinweis ausblenden',
+        expandHint: 'Hinweis einblenden',
+        expandHintTitle: 'Hinweis einblenden (das Tastenkürzel funktioniert weiter)',
+        historyPosition: 'Verlauf {index}/{total}',
+        historyTitle: '↑/↓ durchsucht den Verlauf; Esc stellt den Entwurf wieder her',
+        clearHistoryLabel: 'Eingabeverlauf löschen',
+        settingsSectionLabel: 'Mehrzeilige Eingabe',
+        settingsSummary: 'Einklappbarer Hinweis, Startzeilen, Verlauf und Tastenkürzel',
+        settingsShortcut: 'Tastenkürzel',
+        settingsShortcutDescription: 'Ändern Sie „Mehrzeilige Eingabe umschalten“ in den Einstellungen.',
+        settingsShortcutPath: 'Einstellungen → Allgemein → Tastenkürzel → Mehrzeilige Eingabe umschalten',
+        settingsOpenShortcuts: 'Einstellungen öffnen',
+        settingsOpenShortcutsDone: 'Die Einstellungen sind offen; wechseln Sie zu Allgemein → Tastenkürzel.',
+        settingsOpenShortcutsFailed: 'Öffnen Sie Einstellungen → Allgemein → Tastenkürzel manuell.',
+        settingsCurrentKeys: 'Aktuelle Belegung: {keys}',
+        settingsUnbound: 'Nicht belegt',
+        settingsHistory: 'Eingabeverlauf',
+        settingsHistoryEmpty: 'Noch nichts aufgezeichnet.',
+        settingsHistoryCount: '{count} Nachrichten aufgezeichnet (nur auf diesem Gerät, bis zu 200).',
+        settingsClearHistory: 'Eingabeverlauf löschen',
+        settingsClearConfirm: 'Wirklich löschen?',
+        settingsCleared: 'Gelöscht.',
+        settingsHint: 'Hinweis-Tab',
+        settingsHintDescription: 'Eingeklappt gewinnt der Composer etwa 16 px; das Tastenkürzel bleibt aktiv.',
+        settingsCollapseNow: 'Hinweis einklappen',
+        settingsExpandNow: 'Hinweis anzeigen',
+        ariaLabel: '{action} ({keys})',
+        settingsLines: 'Startzeilen',
+        settingsLinesDescription: 'Mindesthöhe des Composers im mehrzeiligen Modus; längere Entwürfe wachsen weiter.',
+        settingsLinesOption: '{lines} Zeilen',
+        settingsMode: 'Standardmodus',
+        settingsModeDescription: 'Neue Sitzungen starten hiermit; eine umgeschaltete Sitzung behält ihren eigenen Modus.',
+        settingsModeDescriptionGlobal: 'Alle Sitzungen teilen diesen Modus; Umschalten im Composer ändert ihn hier.',
+        settingsModeSingle: 'Einzeilig',
+        settingsModeMulti: 'Mehrzeilig',
+        settingsSession: 'Speicherung je Sitzung',
+        settingsSessionDescription: 'An: Jede Sitzung merkt sich ihre eigene Einzeilig-/Mehrzeilig-Wahl. Aus: Alle Sitzungen teilen einen Modus.',
+        settingsSessionOff: 'Aus',
+        settingsSessionOn: 'An',
+        settingsSessionClear: 'Speicherung je Sitzung löschen',
+        settingsSessionCleared: 'Gelöscht.',
+      },
+      ru: {
+        toMulti: 'Многострочный ввод',
+        toSingle: 'Однострочный ввод',
+        submitHint: 'Shift+Enter — отправить',
+        toggleLabel: 'Переключить многострочный ввод',
+        hintTitle: 'Нажмите, чтобы сменить режим ввода. Сочетание клавиш меняется в «Настройки → Общие → Сочетания клавиш».',
+        collapseHint: 'Скрыть подсказку',
+        collapseHintTitle: 'Скрыть подсказку ввода',
+        expandHint: 'Показать подсказку',
+        expandHintTitle: 'Показать подсказку (сочетание клавиш продолжает работать)',
+        historyPosition: 'История {index}/{total}',
+        historyTitle: '↑/↓ — просмотр истории, Esc — вернуть черновик',
+        clearHistoryLabel: 'Очистить историю ввода',
+        settingsSectionLabel: 'Многострочный ввод',
+        settingsSummary: 'Сворачиваемая подсказка, начальные строки, история и сочетание клавиш',
+        settingsShortcut: 'Сочетание клавиш',
+        settingsShortcutDescription: 'Измените «Переключить многострочный ввод» в настройках.',
+        settingsShortcutPath: 'Настройки → Общие → Сочетания клавиш → Переключить многострочный ввод',
+        settingsOpenShortcuts: 'Открыть настройки',
+        settingsOpenShortcutsDone: 'Настройки открыты; перейдите в «Общие → Сочетания клавиш».',
+        settingsOpenShortcutsFailed: 'Откройте «Настройки → Общие → Сочетания клавиш» вручную.',
+        settingsCurrentKeys: 'Текущее сочетание: {keys}',
+        settingsUnbound: 'Не назначено',
+        settingsHistory: 'История ввода',
+        settingsHistoryEmpty: 'Пока ничего не записано.',
+        settingsHistoryCount: 'Записано сообщений: {count} (только на этом устройстве, до 200).',
+        settingsClearHistory: 'Очистить историю ввода',
+        settingsClearConfirm: 'Точно очистить?',
+        settingsCleared: 'Очищено.',
+        settingsHint: 'Вкладка подсказки',
+        settingsHintDescription: 'В свёрнутом виде поле ввода получает около 16 px; сочетание клавиш работает.',
+        settingsCollapseNow: 'Свернуть подсказку',
+        settingsExpandNow: 'Показать подсказку',
+        ariaLabel: '{action} ({keys})',
+        settingsLines: 'Начальные строки',
+        settingsLinesDescription: 'Минимальная высота поля ввода в многострочном режиме; длинные черновики растут дальше.',
+        settingsLinesOption: '{lines} стр.',
+        settingsMode: 'Режим по умолчанию',
+        settingsModeDescription: 'Новые сессии начинаются с него; сессия, где вы переключили режим, хранит свой.',
+        settingsModeDescriptionGlobal: 'Все сессии используют этот режим; переключение в поле ввода меняет его здесь.',
+        settingsModeSingle: 'Одна строка',
+        settingsModeMulti: 'Многострочный',
+        settingsSession: 'Память по сессиям',
+        settingsSessionDescription: 'Вкл.: каждая сессия помнит свой выбор. Выкл.: все сессии используют один режим.',
+        settingsSessionOff: 'Выкл.',
+        settingsSessionOn: 'Вкл.',
+        settingsSessionClear: 'Очистить память по сессиям',
+        settingsSessionCleared: 'Очищено.',
+      },
+      pt: {
+        toMulti: 'Entrada multilinha',
+        toSingle: 'Entrada de uma linha',
+        submitHint: 'Shift+Enter para enviar',
+        toggleLabel: 'Alternar entrada multilinha',
+        hintTitle: 'Clique para alternar o modo de entrada. O atalho é alterado em Configurações → Geral → Atalhos de teclado.',
+        collapseHint: 'Ocultar a dica',
+        collapseHintTitle: 'Ocultar a dica de entrada',
+        expandHint: 'Mostrar a dica',
+        expandHintTitle: 'Mostrar a dica de entrada (o atalho continua funcionando)',
+        historyPosition: 'Histórico {index}/{total}',
+        historyTitle: '↑/↓ percorre o histórico; Esc restaura o rascunho',
+        clearHistoryLabel: 'Limpar o histórico de entrada',
+        settingsSectionLabel: 'Entrada multilinha',
+        settingsSummary: 'Dica recolhível, linhas iniciais, histórico e atalho',
+        settingsShortcut: 'Atalho',
+        settingsShortcutDescription: 'Altere «Alternar entrada multilinha» nas Configurações.',
+        settingsShortcutPath: 'Configurações → Geral → Atalhos de teclado → Alternar entrada multilinha',
+        settingsOpenShortcuts: 'Abrir Configurações',
+        settingsOpenShortcutsDone: 'As Configurações estão abertas; vá em Geral → Atalhos de teclado.',
+        settingsOpenShortcutsFailed: 'Abra Configurações → Geral → Atalhos de teclado manualmente.',
+        settingsCurrentKeys: 'Combinação atual: {keys}',
+        settingsUnbound: 'Sem atalho',
+        settingsHistory: 'Histórico de entrada',
+        settingsHistoryEmpty: 'Nada registrado ainda.',
+        settingsHistoryCount: '{count} mensagens registradas (apenas neste dispositivo, até 200).',
+        settingsClearHistory: 'Limpar o histórico de entrada',
+        settingsClearConfirm: 'Limpar mesmo?',
+        settingsCleared: 'Limpo.',
+        settingsHint: 'Aba da dica',
+        settingsHintDescription: 'Recolhida, a dica devolve cerca de 16 px ao compositor; o atalho continua funcionando.',
+        settingsCollapseNow: 'Recolher a dica',
+        settingsExpandNow: 'Mostrar a dica',
+        ariaLabel: '{action} ({keys})',
+        settingsLines: 'Linhas iniciais',
+        settingsLinesDescription: 'Altura mínima do compositor no modo multilinha; rascunhos longos continuam crescendo.',
+        settingsLinesOption: '{lines} linhas',
+        settingsMode: 'Modo padrão',
+        settingsModeDescription: 'Novas sessões começam assim; uma sessão em que você alternou mantém o próprio modo.',
+        settingsModeDescriptionGlobal: 'Todas as sessões compartilham este modo; alternar no compositor muda aqui.',
+        settingsModeSingle: 'Uma linha',
+        settingsModeMulti: 'Multilinha',
+        settingsSession: 'Memória por sessão',
+        settingsSessionDescription: 'Ligado: cada sessão lembra a própria escolha entre uma linha e multilinha. Desligado: todas compartilham um modo.',
+        settingsSessionOff: 'Desligado',
+        settingsSessionOn: 'Ligado',
+        settingsSessionClear: 'Limpar a memória por sessão',
+        settingsSessionCleared: 'Limpa.',
       },
     }
 
@@ -436,55 +786,13 @@ window.__ModuleLoader__.load({
   line-height: 18px;
   color: var(--dsw-alias-label-caption);
 }
-${FLOOR_SELECTOR} {
-  min-height: calc(${MIN_LINES} * 1lh + 8px);
-}
-@supports not (height: 1lh) {
-  /* Plugins page configuration: plain native controls with DSH tokens so the
-   hand-written bundle needs no primitives import. */
-.dmi-settings {
+/* Segmented choices (starting lines, default mode): plain native buttons. */
+.dmi-settings-choices {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  margin-top: 4px;
+  flex-wrap: wrap;
+  gap: 6px;
 }
-.dmi-settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  border: 0.5px solid var(--dsw-alias-border-l2);
-  border-radius: var(--dsw-radius-md, 12px);
-}
-.dmi-settings-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.dmi-settings-title {
-  margin: 0;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--dsw-alias-label-primary);
-}
-.dmi-settings-desc {
-  margin: 0;
-  font-size: 12px;
-  line-height: 18px;
-  color: var(--dsw-alias-label-tertiary);
-}
-.dmi-settings-path {
-  margin: 0;
-  padding: 4px 8px;
-  border-radius: var(--dsw-radius-sm, 6px);
-  background: var(--dsw-alias-interactive-bg-hover);
-  color: var(--dsw-alias-label-secondary);
-  font-size: 12px;
-  line-height: 18px;
-}
-.dmi-settings-button {
-  align-self: flex-start;
+.dmi-settings-choice {
   margin: 0;
   padding: 4px 10px;
   border: 0.5px solid var(--dsw-alias-border-l3);
@@ -496,20 +804,69 @@ ${FLOOR_SELECTOR} {
   line-height: 18px;
   cursor: pointer;
 }
-.dmi-settings-button:hover {
+.dmi-settings-choice:hover {
   background: var(--dsw-alias-interactive-bg-hover);
 }
-.dmi-settings-danger {
-  color: var(--dsw-alias-state-error-primary, var(--dsw-alias-label-secondary));
+.dmi-settings-choice-active,
+.dmi-settings-choice-active:hover {
+  border-color: var(--dsw-alias-label-secondary);
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 600;
 }
-.dmi-settings-note {
+/* Scope switch (per-session memory): a track and a knob, DSH tokens only. */
+.dmi-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
   margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font: inherit;
   font-size: 12px;
   line-height: 18px;
-  color: var(--dsw-alias-label-caption);
+  cursor: pointer;
+}
+.dmi-switch-track {
+  position: relative;
+  display: inline-block;
+  box-sizing: border-box;
+  width: 32px;
+  height: 18px;
+  border: 0.5px solid var(--dsw-alias-border-l3);
+  border-radius: 9px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.dmi-switch-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dsw-alias-label-caption);
+  transition: transform 120ms ease, background 120ms ease;
+}
+.dmi-switch[aria-checked="true"] .dmi-switch-track {
+  background: var(--dsw-alias-label-secondary);
+  border-color: var(--dsw-alias-label-secondary);
+}
+.dmi-switch[aria-checked="true"] .dmi-switch-knob {
+  transform: translateX(14px);
+  background: var(--dsw-alias-bg-base);
 }
 ${FLOOR_SELECTOR} {
-    min-height: ${MIN_LINES * 24 + 8}px;
+  min-height: calc(var(${LINES_PROPERTY}, ${MIN_LINES}) * 1lh + 8px);
+}
+@supports not (height: 1lh) {
+  /* Unit fallback for engines without the lh unit: the same configurable floor,
+     measured in a 24px line box instead of the live line height. */
+${FLOOR_SELECTOR} {
+    min-height: calc(var(${LINES_PROPERTY}, ${MIN_LINES}) * 24px + 8px);
   }
 }
 @media (max-width: 720px) {
@@ -576,6 +933,185 @@ ${FLOOR_SELECTOR} {
       if (typeof element.setAttribute !== 'function' || typeof element.removeAttribute !== 'function') return
       if (normalizeMode(mode) === MODE_MULTI) element.setAttribute(MODE_ATTRIBUTE, MODE_MULTI)
       else element.removeAttribute(MODE_ATTRIBUTE)
+    }
+
+    /**
+     * Coerce any stored value into one of the offered floors.
+     * @param value - raw preference value.
+     * @returns `3`, `4`, or `5`; the default for anything else.
+     */
+    function normalizeLines(value) {
+      const parsed = typeof value === 'number' ? value : Number.parseInt(String(value ?? ''), 10)
+      return MIN_LINES_VALUES.includes(parsed) ? parsed : MIN_LINES
+    }
+
+    /**
+     * Read the persisted floor; blocked or damaged storage falls back.
+     * @param store - `localStorage`-like object, or undefined.
+     * @returns the stored floor or the default.
+     */
+    function readLines(store) {
+      try {
+        return normalizeLines(store?.getItem(LINES_STORAGE_KEY))
+      } catch {
+        return MIN_LINES
+      }
+    }
+
+    /**
+     * Persist the floor; a blocked backend only costs the preference.
+     * @param store - `localStorage`-like object, or undefined.
+     * @param lines - floor to persist.
+     */
+    function writeLines(store, lines) {
+      try {
+        store?.setItem(LINES_STORAGE_KEY, String(normalizeLines(lines)))
+      } catch {
+        /* Preference persistence is best-effort. */
+      }
+    }
+
+    /**
+     * Project the floor onto the custom property the height rule multiplies.
+     * @param element - document root, or null in non-DOM tests.
+     * @param lines - floor to apply.
+     */
+    function applyLines(element, lines) {
+      if (element === null || element === undefined) return
+      const style = element.style
+      if (style === null || style === undefined || typeof style.setProperty !== 'function') return
+      style.setProperty(LINES_PROPERTY, String(normalizeLines(lines)))
+    }
+
+    /** @returns an empty per-session override document. */
+    function emptySessionModes() {
+      return { version: SESSION_MODE_VERSION, sessions: [] }
+    }
+
+    /**
+     * Normalize a persisted override document: unknown modes, blank ids, and
+     * duplicates are dropped, and the oldest entries are trimmed away first.
+     * @param raw - parsed storage document, or anything.
+     * @returns `{ version, sessions }` with clean entries, oldest first.
+     */
+    function sanitizeSessionModes(raw) {
+      if (raw === null || typeof raw !== 'object') return emptySessionModes()
+      if (raw.version !== SESSION_MODE_VERSION) return emptySessionModes()
+      const list = Array.isArray(raw.sessions) ? raw.sessions : []
+      const sessions = []
+      const seen = new Set()
+      for (const item of list) {
+        if (item === null || typeof item !== 'object') continue
+        const id = typeof item.id === 'string' ? item.id.trim() : ''
+        if (id === '' || seen.has(id)) continue
+        if (item.mode !== MODE_SINGLE && item.mode !== MODE_MULTI) continue
+        seen.add(id)
+        sessions.push({ id, mode: item.mode })
+      }
+      return { version: SESSION_MODE_VERSION, sessions: sessions.slice(-SESSION_MODE_MAX_ENTRIES) }
+    }
+
+    /**
+     * Read the per-session overrides; damaged storage yields an empty map.
+     * @param store - `localStorage`-like object, or undefined.
+     * @returns the normalized override document.
+     */
+    function readSessionModes(store) {
+      try {
+        const raw = store?.getItem(SESSION_MODE_STORAGE_KEY)
+        if (typeof raw !== 'string' || raw === '') return emptySessionModes()
+        return sanitizeSessionModes(JSON.parse(raw))
+      } catch {
+        return emptySessionModes()
+      }
+    }
+
+    /**
+     * Persist the override document; a blocked backend only costs the map.
+     * @param store - `localStorage`-like object, or undefined.
+     * @param doc - override document to persist.
+     */
+    function writeSessionModes(store, doc) {
+      try {
+        store?.setItem(SESSION_MODE_STORAGE_KEY, JSON.stringify(sanitizeSessionModes(doc)))
+      } catch {
+        /* Preference persistence is best-effort. */
+      }
+    }
+
+    /**
+     * @param doc - override document.
+     * @param sessionId - session to look up.
+     * @returns the session's own mode, or null when it follows the default.
+     */
+    function sessionModeOf(doc, sessionId) {
+      if (typeof sessionId !== 'string' || sessionId === '') return null
+      const hit = sanitizeSessionModes(doc).sessions.find((item) => item.id === sessionId)
+      return hit === undefined ? null : hit.mode
+    }
+
+    /**
+     * Record one session's mode, moving it to the most-recent end of the LRU.
+     * @param doc - override document.
+     * @param sessionId - session to write; a blank id leaves the map alone.
+     * @param mode - mode to remember.
+     * @returns the next override document.
+     */
+    function withSessionMode(doc, sessionId, mode) {
+      const clean = sanitizeSessionModes(doc)
+      if (typeof sessionId !== 'string' || sessionId === '') return clean
+      const sessions = clean.sessions.filter((item) => item.id !== sessionId)
+      sessions.push({ id: sessionId, mode: normalizeMode(mode) })
+      return { version: SESSION_MODE_VERSION, sessions: sessions.slice(-SESSION_MODE_MAX_ENTRIES) }
+    }
+
+    /**
+     * @param value - raw scope switch value.
+     * @returns whether per-session memory is enabled; only `on` enables it.
+     */
+    function normalizeSessionMemory(value) {
+      return value === SESSION_MEMORY_ON
+    }
+
+    /**
+     * Read the scope switch; blocked or missing storage means the default.
+     * @param store - `localStorage`-like object, or undefined.
+     * @returns whether per-session memory is enabled.
+     */
+    function readSessionMemory(store) {
+      try {
+        return normalizeSessionMemory(store?.getItem(SESSION_MEMORY_STORAGE_KEY))
+      } catch {
+        return false
+      }
+    }
+
+    /**
+     * Persist the scope switch; a blocked backend only costs the preference.
+     * @param store - `localStorage`-like object, or undefined.
+     * @param enabled - whether per-session memory is enabled.
+     */
+    function writeSessionMemory(store, enabled) {
+      try {
+        store?.setItem(SESSION_MEMORY_STORAGE_KEY, enabled === true ? SESSION_MEMORY_ON : SESSION_MEMORY_OFF)
+      } catch {
+        /* Preference persistence is best-effort. */
+      }
+    }
+
+    /**
+     * Resolve the mode a composer should show. With per-session memory off the
+     * overrides are ignored entirely, so every session follows one mode.
+     * @param doc - override document.
+     * @param enabled - whether per-session memory is on.
+     * @param sessionId - composer's session, or null.
+     * @param fallback - the shared default mode.
+     * @returns the mode to adopt.
+     */
+    function resolveSessionMode(doc, enabled, sessionId, fallback) {
+      const shared = normalizeMode(fallback)
+      if (enabled !== true) return shared
+      return sessionModeOf(doc, sessionId) ?? shared
     }
 
     /**
@@ -1012,7 +1548,7 @@ ${FLOOR_SELECTOR} {
      * toggle callback.
      * @returns the hint row.
      */
-    function MultiLineHint({ t, modeStore, shortcutStore, toggle, useInput, useSession, inputActions }) {
+    function MultiLineHint({ t, modeStore, shortcutStore, toggle, activate, deactivate, useInput, useSession, inputActions }) {
       const mode = React.useSyncExternalStore(modeStore.subscribe, modeStore.getSnapshot, modeStore.getSnapshot)
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
       const collapsed = isCollapsed(React.useSyncExternalStore(hintStore.subscribe, hintStore.getSnapshot, hintStore.getSnapshot))
@@ -1029,6 +1565,17 @@ ${FLOOR_SELECTOR} {
       const lastDraftRef = React.useRef('')
       /** Whether this DSH build ever exposed the frozen `sending` phase (0.2.2+). */
       const sendingSeenRef = React.useRef(phase === 'sending')
+
+      // This row belongs to the visible composer: adopting its session's mode
+      // here keeps exactly one `<html>` marker for the page. The callbacks come
+      // from the slot's per-session `inject`, so a session the user switched
+      // keeps its own mode while a fresh one follows the default.
+      React.useLayoutEffect(() => {
+        activate()
+        return () => {
+          deactivate()
+        }
+      }, [activate, deactivate])
 
       // Cancel exactly the row gap the composer stack is using, so the tab's
       // bottom hairline lands on the card's top edge. The docked composer gaps
@@ -1307,13 +1854,17 @@ ${FLOOR_SELECTOR} {
      * @param props - owner view, dictionary, stores, and write actions.
      * @returns the summary line or the settings sections.
      */
-    function MultiLineSettingsBody({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed, showOpenButton = true }) {
+    function MultiLineSettingsBody({ t, historyStore, hintStore, shortcutStore, linesStore, defaultModeStore, sessionMemoryStore, clearHistory, setCollapsed, setLines, setDefaultMode, setSessionMemory, clearSessions, showOpenButton = true }) {
       const entries = React.useSyncExternalStore(historyStore.subscribe, historyStore.getSnapshot, historyStore.getSnapshot)
       const collapsed = isCollapsed(React.useSyncExternalStore(hintStore.subscribe, hintStore.getSnapshot, hintStore.getSnapshot))
       const shortcut = React.useSyncExternalStore(shortcutStore.subscribe, shortcutStore.getSnapshot, shortcutStore.getSnapshot)
+      const lines = normalizeLines(React.useSyncExternalStore(linesStore.subscribe, linesStore.getSnapshot, linesStore.getSnapshot))
+      const defaultMode = normalizeMode(React.useSyncExternalStore(defaultModeStore.subscribe, defaultModeStore.getSnapshot, defaultModeStore.getSnapshot))
+      const sessionMemory = React.useSyncExternalStore(sessionMemoryStore.subscribe, sessionMemoryStore.getSnapshot, sessionMemoryStore.getSnapshot) === true
       const [opened, setOpened] = React.useState(null)
       const [confirming, setConfirming] = React.useState(false)
       const [cleared, setCleared] = React.useState(false)
+      const [sessionsCleared, setSessionsCleared] = React.useState(false)
       const keys = shortcut === null ? t('settingsUnbound') : shortcut
       const count = entries.length
       return h(
@@ -1340,6 +1891,101 @@ ${FLOOR_SELECTOR} {
           ),
           showOpenButton && opened === 'ok' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsDone')),
           showOpenButton && opened === 'failed' && h('p', { className: 'dmi-settings-note' }, t('settingsOpenShortcutsFailed')),
+        ),
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsLines'))),
+          h('p', { className: 'dmi-settings-desc' }, t('settingsLinesDescription')),
+          h(
+            'div',
+            { className: 'dmi-settings-choices', role: 'group', 'aria-label': t('settingsLines') },
+            MIN_LINES_VALUES.map((value) => h(
+              'button',
+              {
+                key: value,
+                type: 'button',
+                className: value === lines ? 'dmi-settings-choice dmi-settings-choice-active' : 'dmi-settings-choice',
+                'aria-pressed': value === lines,
+                onClick: () => {
+                  setLines(value)
+                },
+              },
+              t('settingsLinesOption', { lines: value }),
+            )),
+          ),
+        ),
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsMode'))),
+          h('p', { className: 'dmi-settings-desc' }, sessionMemory ? t('settingsModeDescription') : t('settingsModeDescriptionGlobal')),
+          h(
+            'div',
+            { className: 'dmi-settings-choices', role: 'group', 'aria-label': t('settingsMode') },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: defaultMode === MODE_SINGLE ? 'dmi-settings-choice dmi-settings-choice-active' : 'dmi-settings-choice',
+                'aria-pressed': defaultMode === MODE_SINGLE,
+                onClick: () => {
+                  setDefaultMode(MODE_SINGLE)
+                },
+              },
+              t('settingsModeSingle'),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: defaultMode === MODE_MULTI ? 'dmi-settings-choice dmi-settings-choice-active' : 'dmi-settings-choice',
+                'aria-pressed': defaultMode === MODE_MULTI,
+                onClick: () => {
+                  setDefaultMode(MODE_MULTI)
+                },
+              },
+              t('settingsModeMulti'),
+            ),
+          ),
+        ),
+        h(
+          'section',
+          { className: 'dmi-settings-section' },
+          h('div', { className: 'dmi-settings-head' }, h('h3', { className: 'dmi-settings-title' }, t('settingsSession'))),
+          h('p', { className: 'dmi-settings-desc' }, t('settingsSessionDescription')),
+          h(
+            'button',
+            {
+              type: 'button',
+              role: 'switch',
+              'aria-checked': sessionMemory,
+              className: 'dmi-switch',
+              onClick: () => {
+                setSessionMemory(!sessionMemory)
+                setSessionsCleared(false)
+              },
+            },
+            h(
+              'span',
+              { className: 'dmi-switch-track', 'aria-hidden': true },
+              h('span', { className: 'dmi-switch-knob' }),
+            ),
+            h('span', null, sessionMemory ? t('settingsSessionOn') : t('settingsSessionOff')),
+          ),
+          sessionMemory && h(
+            'button',
+            {
+              type: 'button',
+              className: 'dmi-settings-button',
+              onClick: () => {
+                clearSessions()
+                setSessionsCleared(true)
+              },
+            },
+            t('settingsSessionClear'),
+          ),
+          sessionMemory && sessionsCleared && h('p', { className: 'dmi-settings-note' }, t('settingsSessionCleared')),
         ),
         h(
           'section',
@@ -1391,9 +2037,9 @@ ${FLOOR_SELECTOR} {
      * @param props - owner view, dictionary, stores, and write actions.
      * @returns the summary line or the shared settings body.
      */
-    function MultiLineSettings({ view, t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+    function MultiLineSettings({ view, t, historyStore, hintStore, shortcutStore, linesStore, defaultModeStore, sessionMemoryStore, clearHistory, setCollapsed, setLines, setDefaultMode, setSessionMemory, clearSessions }) {
       if (view === 'summary') return t('settingsSummary')
-      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed })
+      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, linesStore, defaultModeStore, sessionMemoryStore, clearHistory, setCollapsed, setLines, setDefaultMode, setSessionMemory, clearSessions })
     }
 
     /**
@@ -1401,10 +2047,10 @@ ${FLOOR_SELECTOR} {
      * @param props - dictionary, stores, and write actions; the shell owns chrome.
      * @returns the shared settings body.
      */
-    function MultiLineSettingsSection({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }) {
+    function MultiLineSettingsSection({ t, historyStore, hintStore, shortcutStore, linesStore, defaultModeStore, sessionMemoryStore, clearHistory, setCollapsed, setLines, setDefaultMode, setSessionMemory, clearSessions }) {
       // Already inside Settings: the path text guides to General → Shortcuts,
       // and an "open Settings" button would be a no-op here.
-      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed, showOpenButton: false })
+      return h(MultiLineSettingsBody, { t, historyStore, hintStore, shortcutStore, linesStore, defaultModeStore, sessionMemoryStore, clearHistory, setCollapsed, setLines, setDefaultMode, setSessionMemory, clearSessions, showOpenButton: false })
     }
 
     //#endregion
@@ -1429,25 +2075,110 @@ ${FLOOR_SELECTOR} {
       }, 'ml-input: styles')
 
       const t = ctx.locale.bind(NS)
+      /** The default for sessions without an override; the settings page edits it. */
       const modeStore = createValueStore(readMode(localStore()))
+      /** The mode the visible composer uses; what the hint and both gestures read. */
+      const effectiveStore = createValueStore(modeStore.getSnapshot())
+      const linesStore = createValueStore(readLines(localStore()))
+      /** Scope switch: off (default) shares one mode, on keeps per-session ones. */
+      const sessionMemoryStore = createValueStore(readSessionMemory(localStore()))
       const shortcutStore = createValueStore(initialShortcutLabel())
+      /** Per-session overrides, kept in memory and mirrored to storage on write. */
+      let sessionModes = readSessionModes(localStore())
+      /** Session whose composer is mounted right now (the shortcut's target). */
+      let activeSession = null
 
-      const setMode = (next) => {
+      const adopt = (next) => {
+        const normalized = normalizeMode(next)
+        effectiveStore.set(normalized)
+        applyModeAttribute(document.documentElement, normalized)
+        return normalized
+      }
+      /** @param next - default mode for new sessions. */
+      const setDefaultMode = (next) => {
         const normalized = normalizeMode(next)
         modeStore.set(normalized)
         writeMode(localStore(), normalized)
-        applyModeAttribute(document.documentElement, normalized)
+        const own = sessionMemoryStore.getSnapshot() ? sessionModeOf(sessionModes, activeSession) : null
+        if (own === null) adopt(normalized)
+      }
+      /**
+       * Switch the visible composer. In a session this writes that session's
+       * own mode; at the hero (no session) it moves the default.
+       * @param next - requested mode.
+       * @param sessionId - composer's session, or null.
+       */
+      const setMode = (next, sessionId) => {
+        const normalized = normalizeMode(next)
+        if (sessionMemoryStore.getSnapshot() && typeof sessionId === 'string' && sessionId !== '') {
+          sessionModes = withSessionMode(sessionModes, sessionId, normalized)
+          writeSessionModes(localStore(), sessionModes)
+        } else {
+          modeStore.set(normalized)
+          writeMode(localStore(), normalized)
+        }
+        adopt(normalized)
+      }
+      /** @param sessionId - composer's session, or null. */
+      const toggleFor = (sessionId) => {
+        setMode(nextMode(effectiveStore.getSnapshot()), sessionId)
       }
       const toggle = () => {
-        setMode(nextMode(modeStore.getSnapshot()))
+        toggleFor(activeSession)
+      }
+      /**
+       * Adopt a session's mode when its composer mounts.
+       * @param sessionId - mounted composer's session, or null.
+       */
+      const activateSession = (sessionId) => {
+        activeSession = typeof sessionId === 'string' && sessionId !== '' ? sessionId : null
+        adopt(resolveSessionMode(sessionModes, sessionMemoryStore.getSnapshot(), activeSession, modeStore.getSnapshot()))
+      }
+      /** @param sessionId - composer that just unmounted. */
+      const deactivateSession = (sessionId) => {
+        const id = typeof sessionId === 'string' && sessionId !== '' ? sessionId : null
+        if (activeSession === id) activeSession = null
+      }
+      /**
+       * Move the scope switch. Turning it off drops the page back to the shared
+       * mode immediately; the overrides stay stored for turning it back on.
+       * @param enabled - whether per-session memory is on.
+       */
+      const setSessionMemory = (enabled) => {
+        const next = enabled === true
+        sessionMemoryStore.set(next)
+        writeSessionMemory(localStore(), next)
+        if (activeSession !== null) {
+          adopt(resolveSessionMode(sessionModes, next, activeSession, modeStore.getSnapshot()))
+        }
+      }
+      /** Drop every override so all sessions follow the default again. */
+      const clearSessions = () => {
+        sessionModes = emptySessionModes()
+        writeSessionModes(localStore(), sessionModes)
+        if (activeSession !== null) adopt(modeStore.getSnapshot())
+      }
+      /** @param next - composer floor in text lines. */
+      const setLines = (next) => {
+        const normalized = normalizeLines(next)
+        linesStore.set(normalized)
+        writeLines(localStore(), normalized)
+        applyLines(document.documentElement, normalized)
       }
 
       ctx.effect(() => {
-        applyModeAttribute(document.documentElement, modeStore.getSnapshot())
+        applyModeAttribute(document.documentElement, effectiveStore.getSnapshot())
         return () => {
           applyModeAttribute(document.documentElement, MODE_SINGLE)
         }
       }, 'ml-input: mode attribute')
+
+      ctx.effect(() => {
+        applyLines(document.documentElement, linesStore.getSnapshot())
+        return () => {
+          applyLines(document.documentElement, MIN_LINES)
+        }
+      }, 'ml-input: floor')
 
       // Enter / Shift+Enter takeover. Capture on the document so the original
       // keydown never reaches Lexical's root, then replay the opposite gesture
@@ -1466,7 +2197,7 @@ ${FLOOR_SELECTOR} {
           const card = editor.closest(COMPOSER_CARD)
           if (card === null) return
           const decision = shouldIntercept({
-            mode: modeStore.getSnapshot(),
+            mode: effectiveStore.getSnapshot(),
             key: event.key,
             shiftKey: event.shiftKey,
             ctrlKey: event.ctrlKey,
@@ -1585,14 +2316,37 @@ ${FLOOR_SELECTOR} {
         id: HINT_ID,
         order: HINT_ORDER,
         locale: NS,
-        inject: () => ({ t, modeStore, shortcutStore, toggle }),
+        // Session-scoped list slot: the session id lets each composer adopt its
+        // own remembered mode instead of one page-wide toggle.
+        inject: (sessionId) => ({
+          t,
+          modeStore: effectiveStore,
+          shortcutStore,
+          toggle: () => toggleFor(sessionId),
+          activate: () => activateSession(sessionId),
+          deactivate: () => deactivateSession(sessionId),
+        }),
       }, MultiLineHint))
 
       ctx.slots.inject(SETTINGS_SLOT, () => ctx.slots.register({
         name: SETTINGS_SLOT,
         key: SETTINGS_KEY,
         locale: NS,
-        inject: () => ({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }),
+        inject: () => ({
+          t,
+          historyStore,
+          hintStore,
+          shortcutStore,
+          linesStore,
+          defaultModeStore: modeStore,
+          sessionMemoryStore,
+          clearHistory,
+          setCollapsed,
+          setLines,
+          setDefaultMode,
+          setSessionMemory,
+          clearSessions,
+        }),
       }, MultiLineSettings))
 
       ctx.slots.inject(SETTINGS_SECTION_SLOT, () => ctx.slots.register({
@@ -1601,7 +2355,21 @@ ${FLOOR_SELECTOR} {
         order: SETTINGS_SECTION_ORDER,
         label: () => t('settingsSectionLabel'),
         locale: NS,
-        inject: () => ({ t, historyStore, hintStore, shortcutStore, clearHistory, setCollapsed }),
+        inject: () => ({
+          t,
+          historyStore,
+          hintStore,
+          shortcutStore,
+          linesStore,
+          defaultModeStore: modeStore,
+          sessionMemoryStore,
+          clearHistory,
+          setCollapsed,
+          setLines,
+          setDefaultMode,
+          setSessionMemory,
+          clearSessions,
+        }),
       }, MultiLineSettingsSection))
     }
 
@@ -1636,6 +2404,15 @@ ${FLOOR_SELECTOR} {
         MODE_SINGLE,
         MODE_MULTI,
         MIN_LINES,
+        MIN_LINES_VALUES,
+        LINES_STORAGE_KEY,
+        LINES_PROPERTY,
+        SESSION_MODE_STORAGE_KEY,
+        SESSION_MODE_MAX_ENTRIES,
+        SESSION_MEMORY_STORAGE_KEY,
+        SESSION_MEMORY_ON,
+        SESSION_MEMORY_OFF,
+        DICT,
         FLOOR_SELECTOR,
         TRIGGER_MENU,
         CSS,
@@ -1655,6 +2432,20 @@ ${FLOOR_SELECTOR} {
         readMode,
         writeMode,
         applyModeAttribute,
+        normalizeLines,
+        readLines,
+        writeLines,
+        applyLines,
+        emptySessionModes,
+        sanitizeSessionModes,
+        readSessionModes,
+        writeSessionModes,
+        sessionModeOf,
+        withSessionMode,
+        normalizeSessionMemory,
+        readSessionMemory,
+        writeSessionMemory,
+        resolveSessionMode,
         normalizeCollapsed,
         isCollapsed,
         readCollapsed,

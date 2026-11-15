@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Entrada multilínea",
+    "description": "Alterna el compositor de la conversación entre una línea y multilínea: Ctrl+E por defecto (se cambia en Ajustes → General → Atajos de teclado); en multilínea, Enter inserta un salto y Shift+Enter envía; la pista superior se pliega en una línea fina, ↑/↓ recupera el texto enviado recientemente, las líneas iniciales son configurables (3–5) y la memoria por sesión es un interruptor opcional desactivado por defecto (todas las sesiones comparten un modo)."
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Saisie multiligne",
+    "description": "Bascule le compositeur de conversation entre une ligne et multiligne : Ctrl+E par défaut (modifiable dans Réglages → Général → Raccourcis clavier) ; en multiligne, Entrée insère un saut de ligne et Maj+Entrée envoie ; l’indication au-dessus du champ se replie en un trait fin, ↑/↓ rappelle le texte récemment envoyé, les lignes initiales sont réglables (3–5) et la mémoire par session est un interrupteur optionnel désactivé par défaut (toutes les sessions partagent un mode)."
+  }
+}

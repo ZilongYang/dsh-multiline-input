@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.2 — 2026-11-15
+
+面向 DSH **0.2.2-rc.3** 的兼容版，并补三项功能（0.2.1 → 0.2.2 交互兼容，无破坏性变更）：
+
+- **DSH 0.2.2-rc.3 兼容核查**：composer 锚点 / `data-phase` / `pendingSubmissions` / `InputActions` / Enter keymap / Shortcuts / dock 槽与布局、`settings.section` 与 `plugins.row.config` 槽逐个在 rc.3 构建产物里复核，全部在位；升级指南只到 `v0.2.2-rc.1`（19 项），无 rc.2 / rc.3 条目，唯一沾边的 `window-drag-regions` 不适用于 dock 流内容。结论见 [兼容性核查](docs/COMPAT-2026-11-15-dsh-0.2.2-rc.3.md)。**无需改动功能代码。**
+- **8 语言包**：DSH 0.2.2 起内置 `de en es fr ja pt ru zh` 八种 locale，插件此前只有 zh / en，其余回落英文；本版补齐 ja / es / fr / de / ru / pt 的完整词典与 `locale/*.json` 元数据，键集与占位符由测试锁死。
+- **起始行数 3–5 可配**：多行模式的输入框下限不再写死 4 行。设备本地 `dsh-multiline-input.lines.v1`，CSS 改读 `--dmi-min-lines`，设置页三选一即时生效（不需要重建样式表）。
+- **按会话记忆（开关，默认关闭）**：默认仍是 0.2.1 的**全局共享一个模式**（在哪个会话切换都一起变），设置页新增一个开关，打开后才进入「每个会话各自记住」——原 `mode.v1` 变为共享默认值，`dsh-multiline-input.session-mode.v1` 存逐会话覆盖（最近 40 个会话 LRU）。开关、默认模式、Enter 接管、↑↓ 历史、tab 文案都读当前生效模式；关闭开关立刻回到共享模式（覆盖值保留，重新打开即恢复）。配套「默认模式」二选一与「清除所有会话记忆」。
+- **设置页**：从 3 段扩到 6 段（快捷键 / 起始行数 / 默认模式 / 按会话记忆 / 输入历史 / 提示 tab），`settings.section` 与 `plugins.row.config` 两个入口共用。
+- **清理**：`@supports not (height: 1lh)` 块里重复的设置页规则（0.2.1 遗留）已删；修掉 0.2.1 文档里把 `0.2.1-rc.3` 写成 `rc.3` 的笔误。
+- **安装门禁**：`engines.dsh` 不变（`>=0.2.1-rc.5 <0.3.0-0`，判定带 `includePrerelease`，rc.3 可过）；`dsh.compatibility.dshReleases` 补 `0.2.2-rc.2` / `0.2.2-rc.3`。
+- 测试：`node --test` **40 条全绿**（新增 8 条：8 语言键集与占位符、行数归一 / 持久化 / `applyLines`、会话记忆读写 / LRU / 容错、开关默认值与 `resolveSessionMode` 的开关语义）。
+
 ## 0.2.1 — 2026-11-05
 
 面向 DSH **0.2.2-rc.1** 的兼容版本（交互能力与 0.2.0 相同）：

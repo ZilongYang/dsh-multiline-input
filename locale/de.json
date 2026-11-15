@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Mehrzeilige Eingabe",
+    "description": "Schaltet den Eingabebereich der Unterhaltung zwischen ein- und mehrzeilig um: standardmäßig Ctrl+E (änderbar unter Einstellungen → Allgemein → Tastenkürzel); mehrzeilig fügt Enter einen Zeilenumbruch ein und Shift+Enter sendet; der Hinweis über dem Feld klappt zu einer dünnen Linie zusammen, ↑/↓ holt zuletzt gesendeten Text zurück, die Startzeilen sind einstellbar (3–5) und die Speicherung je Sitzung ist ein optionaler Schalter, standardmäßig aus (alle Sitzungen teilen einen Modus)."
+  }
+}

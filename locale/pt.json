@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Entrada multilinha",
+    "description": "Alterna o compositor da conversa entre uma linha e multilinha: Ctrl+E por padrão (editável em Configurações → Geral → Atalhos de teclado); no modo multilinha, Enter insere uma quebra e Shift+Enter envia; a dica acima do campo recolhe para uma linha fina, ↑/↓ recupera o texto enviado recentemente, as linhas iniciais são configuráveis (3–5) e a memória por sessão é um interruptor opcional desligado por padrão (todas as sessões compartilham um modo)."
+  }
+}

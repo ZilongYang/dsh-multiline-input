@@ -42,17 +42,29 @@
 - [x] 子龙本机验收（DSH 0.2.2-rc.1 桌面版，2026-11-05 通过）
 - [x] 发布：tag `v0.2.1`、npm publish、GitHub Release、官网同步（清单见 [docs/RELEASE-CHECKLIST-0.2.1.md](docs/RELEASE-CHECKLIST-0.2.1.md)）
 
+## 0.2.2（2026-11-15 开发完成，待子龙真机验收）
+
+- [x] **DSH 0.2.2-rc.3 兼容核查**：逐个锚点在 rc.3 构建产物里复核，结论「无需改功能代码」；见 [docs/COMPAT-2026-11-15-dsh-0.2.2-rc.3.md](docs/COMPAT-2026-11-15-dsh-0.2.2-rc.3.md)
+- [x] **安装门禁与版本矩阵**：`dsh.compatibility.dshReleases` 补 `0.2.2-rc.2` / `0.2.2-rc.3`（`engines.dsh` 不变）
+- [x] **8 语言包**：补齐 ja / es / fr / de / ru / pt 词典与 `locale/*.json`，键集与占位符由测试锁死
+- [x] **起始行数 3–5 可配**：设备本地存储 + `--dmi-min-lines`，设置页三选一即时生效
+- [x] **按会话记忆（开关，默认关闭 = 全局共享）**：打开后逐会话覆盖（LRU 40）+ 清除入口
+- [x] **设置页扩到 6 段**，两个入口共用；顺手清理 0.2.1 遗留的重复 CSS
+- [x] 测试 32 → 40 条全绿；文档（README / CHANGELOG / PLAN / COMPAT / 发版清单）
+- [ ] 子龙本机验收（DSH 0.2.2-rc.3 桌面版）
+- [ ] 发布：tag `v0.2.2`、npm publish、GitHub Release、官网同步（清单见 [docs/RELEASE-CHECKLIST-0.2.2.md](docs/RELEASE-CHECKLIST-0.2.2.md)）
+
 ## 后续候选
 
-- [ ] 起始行数可配置（3–5 行），通过 Host `Config` + 插件详情页
-- [ ] 按会话记忆模式（当前为全局 / 按设备）
+- [x] ~~起始行数可配置（3–5 行）~~ → 0.2.2 以设备本地存储实现（Host `Config` 路线未采用：客户端侧没有读到行配置的公开入口）
+- [x] ~~按会话记忆模式~~ → 0.2.2 实现为可选开关（默认关闭＝全局共享，避免「同一个输入框行为随会话变」扰乱判断）
 - [ ] 若 DSH 提供公开的 composer 输入扩展点，替换现有的 DOM 事件接管（0.2.0 结论：只有 `InputActions` 写入面，无键盘仲裁扩展点，方向键/Enter 仍需捕获阶段监听）
-- [ ] 补 ja / es / fr / de / ru / pt 语言包（DSH 0.2.2 新增，缺省回落英文）
+- [x] ~~补 ja / es / fr / de / ru / pt 语言包~~ → 0.2.2 已补齐
 
 ## 文档
 
-- 计划：[docs/PLAN-2026-11-05.md](docs/PLAN-2026-11-05.md)、[docs/PLAN-2026-10-27.md](docs/PLAN-2026-10-27.md)、[docs/PLAN-2026-10-30.md](docs/PLAN-2026-10-30.md)
-- 兼容性核查：[docs/COMPAT-2026-11-05-dsh-0.2.2-rc.1.md](docs/COMPAT-2026-11-05-dsh-0.2.2-rc.1.md)
-- 发版清单：[docs/RELEASE-CHECKLIST-0.2.1.md](docs/RELEASE-CHECKLIST-0.2.1.md)、[docs/RELEASE-CHECKLIST-0.2.0.md](docs/RELEASE-CHECKLIST-0.2.0.md)、[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
+- 计划：[docs/PLAN-2026-11-15.md](docs/PLAN-2026-11-15.md)、[docs/PLAN-2026-11-05.md](docs/PLAN-2026-11-05.md)、[docs/PLAN-2026-10-27.md](docs/PLAN-2026-10-27.md)、[docs/PLAN-2026-10-30.md](docs/PLAN-2026-10-30.md)
+- 兼容性核查：[docs/COMPAT-2026-11-15-dsh-0.2.2-rc.3.md](docs/COMPAT-2026-11-15-dsh-0.2.2-rc.3.md)、[docs/COMPAT-2026-11-05-dsh-0.2.2-rc.1.md](docs/COMPAT-2026-11-05-dsh-0.2.2-rc.1.md)
+- 发版清单：[docs/RELEASE-CHECKLIST-0.2.2.md](docs/RELEASE-CHECKLIST-0.2.2.md)、[docs/RELEASE-CHECKLIST-0.2.1.md](docs/RELEASE-CHECKLIST-0.2.1.md)、[docs/RELEASE-CHECKLIST-0.2.0.md](docs/RELEASE-CHECKLIST-0.2.0.md)、[0.1.1](docs/RELEASE-CHECKLIST-0.1.1.md)、[0.1.0](docs/RELEASE-CHECKLIST-0.1.0.md)
 - npm：<https://www.npmjs.com/package/dsh-multiline-input>
-- GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.1>（上一版：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.0>）
+- GitHub Release：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.2>（上一版：<https://github.com/ZilongYang/dsh-multiline-input/releases/tag/v0.2.1>）
